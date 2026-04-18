@@ -1,0 +1,27 @@
+# Paramètres fonctionnels du Service d'Optimisation BESS.
+# Les valeurs sensibles (DB, clés API) sont dans .env — jamais ici.
+
+# Prix spot par défaut si tous les fallbacks échouent (EUR/MWh).
+prix_spot_defaut_eur_mwh: 80.0
+
+# Seuil de dérive SoC au-delà duquel une trajectoire est marquée "corrective".
+# Exprimé en pourcentage de la capacité totale de la batterie.
+seuil_derive_pct: 10.0
+
+# Pénalité appliquée à la variable slack sur la contrainte de puissance souscrite.
+# Doit être très supérieur à max(prix_spot) × pas_h pour que le solveur ne viole
+# la contrainte qu'en dernier recours.
+slack_penalty_eur_par_kwh: 1000000.0
+
+# Seuil (en kWh cumulés sur l'horizon) au-delà duquel on considère que le slack
+# a été utilisé et on renvoie le statut "degraded".
+seuil_slack_kwh: 0.1
+
+# Horizon interne d'optimisation (heures). 48h évite l'effet de bord d'horizon.
+horizon_interne_h: 48
+
+# Horizon renvoyé au contrôleur (heures). 24h = 96 pas de 15 min.
+horizon_reponse_h: 24
+
+# Pas de temps en minutes.
+pas_minutes: 15
