@@ -91,15 +91,19 @@ def post_optimize(
 
 @router.get("/health", response_model=HealthResponse)
 def get_health(session: Session = Depends(get_session)) -> HealthResponse:
-    db_ok = True
+    db_ok = False
     nb_sites = 0
     try:
         session.execute(text("SELECT 1"))
-        from optimizer.db.models import Trajectoire
-
-        nb_sites = session.query(Trajectoire.site_id).distinct().count()
-    except Exception:  # noqa: BLE001
-        db_ok = False
+        db_ok = True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("health | DB inaccessible | %s", exc)
+    if db_ok:
+        try:
+            from optimizer.db.models import Trajectoire
+            nb_sites = session.query(Trajectoire.site_id).distinct().count()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("health | lecture trajectoires impossible | %s", exc)
     return HealthResponse(
         status="ok" if db_ok else "degraded",
         database=db_ok,

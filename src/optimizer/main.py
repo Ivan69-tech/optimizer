@@ -11,7 +11,6 @@ Usage prod (conteneur) :
 from __future__ import annotations
 
 import logging
-import re
 import time
 
 from fastapi import FastAPI, Request
@@ -30,10 +29,6 @@ def _setup_logging() -> None:
     )
 
 
-def _masquer_password_url(url: str) -> str:
-    return re.sub(r"(://[^:]+:)[^@]+(@)", r"\1***\2", url)
-
-
 def create_app() -> FastAPI:
     _setup_logging()
 
@@ -48,7 +43,13 @@ def create_app() -> FastAPI:
         sites = []
         logger.warning("SITE_API_KEYS invalide — aucun site configuré")
     logger.info("Sites configurés : %s", sites)
-    logger.info("DB : %s", _masquer_password_url(settings.database_url))
+    try:
+        from optimizer.db.session import engine
+        with engine.connect():
+            pass
+        logger.info("DB connectée")
+    except Exception as exc:
+        logger.warning("DB inaccessible | %s", exc)
 
     application = FastAPI(
         title="Service d'Optimisation BESS",
