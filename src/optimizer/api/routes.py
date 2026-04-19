@@ -54,7 +54,6 @@ def post_optimize(
             session=session,
             site_id=request.site_id,
             soc_actuel_kwh=request.soc_actuel_kwh,
-            timestamp_requete=request.timestamp_requete,
             cfg=cfg,
         )
     except SiteNotFoundError as err:

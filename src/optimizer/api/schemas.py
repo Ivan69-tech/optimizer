@@ -15,7 +15,6 @@ class OptimizeRequest(BaseModel):
     site_id: str = Field(..., min_length=1, max_length=64)
     soc_actuel_kwh: float = Field(..., ge=0)
     capacite_bess_kwh: float = Field(..., gt=0)
-    timestamp_requete: datetime
 
 
 class TrajectoryStep(BaseModel):

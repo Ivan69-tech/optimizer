@@ -215,8 +215,7 @@ Calcule la trajectoire optimale pour un site.
 {
   "site_id": "site-01",
   "soc_actuel_kwh": 150.0,
-  "capacite_bess_kwh": 200.0,
-  "timestamp_requete": "2026-04-19T10:00:00+02:00"
+  "capacite_bess_kwh": 200.0
 }
 ```
 
@@ -226,8 +225,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
   -d '{
     "site_id": "site-demo-01",
     "soc_actuel_kwh": 150.0,
-    "capacite_bess_kwh": 200.0,
-    "timestamp_requete": "2026-04-19T10:00:00+02:00"
+    "capacite_bess_kwh": 200.0
   }'
 ```
 

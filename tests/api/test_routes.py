@@ -39,7 +39,6 @@ def _payload(site_id: str = "site-test-01"):
         "site_id": site_id,
         "soc_actuel_kwh": 100.0,
         "capacite_bess_kwh": 200.0,
-        "timestamp_requete": "2026-04-18T10:00:00+00:00",
     }
 
 

@@ -256,8 +256,7 @@ CREATE TABLE trajectoire_pas (
 {
   "site_id": "string",
   "soc_actuel_kwh": 150.0,
-  "capacite_bess_kwh": 200.0,
-  "timestamp_requete": "2026-04-18T10:00:00+02:00"
+  "capacite_bess_kwh": 200.0
 }
 ```
 

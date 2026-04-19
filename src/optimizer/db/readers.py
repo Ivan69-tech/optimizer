@@ -67,6 +67,14 @@ def _fetch_most_recent_forecasts(
         .filter(model.timestamp < fin)
         .all()
     )
+    logger.info(
+        "_fetch_most_recent_forecasts | table=%s | site=%s | fenetre=[%s, %s) | %d lignes brutes",
+        model.__tablename__,
+        site_id,
+        debut.isoformat(),
+        fin.isoformat(),
+        len(rows),
+    )
     plus_recents: dict[datetime, tuple[float, datetime]] = {}
     for ts, puissance, gen in rows:
         cle = _strip_tz(ts)

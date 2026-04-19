@@ -19,8 +19,14 @@ from optimizer.pipeline.optimize import (
 N = 192
 
 
+def _debut_test() -> datetime:
+    """Retourne l'heure courante arrondie au pas de 15 min (même logique que le pipeline)."""
+    now = datetime.now(UTC)
+    return now.replace(minute=(now.minute // 15) * 15, second=0, microsecond=0)
+
+
 def _remplir_forecasts(db_session, site_id: str, debut: datetime, conso: float, pv: float):
-    gen = datetime(2026, 4, 18, 9, tzinfo=UTC)
+    gen = datetime.now(UTC)
     for i in range(N):
         ts = debut + timedelta(minutes=15 * i)
         db_session.add(
@@ -61,20 +67,18 @@ def test_site_inconnu(db_session, cfg_test):
             db_session,
             site_id="inconnu",
             soc_actuel_kwh=100.0,
-            timestamp_requete=datetime(2026, 4, 18, 10, tzinfo=UTC),
             cfg=cfg_test,
         )
 
 
 def test_pipeline_happy_path(db_session, sample_site, cfg_test):
-    debut = datetime(2026, 4, 18, 10, tzinfo=UTC)
+    debut = _debut_test()
     _remplir_forecasts(db_session, sample_site.site_id, debut, conso=30.0, pv=20.0)
 
     resultat = run_optimization(
         db_session,
         site_id=sample_site.site_id,
         soc_actuel_kwh=100.0,
-        timestamp_requete=debut,
         cfg=cfg_test,
     )
     assert resultat.statut == STATUT_OK
@@ -88,14 +92,13 @@ def test_pipeline_leve_si_forecasts_majoritairement_manquants(db_session, sample
             db_session,
             site_id=sample_site.site_id,
             soc_actuel_kwh=100.0,
-            timestamp_requete=datetime(2026, 4, 18, 10, tzinfo=UTC),
             cfg=cfg_test,
         )
 
 
 def test_pipeline_statut_corrective_si_derive_elevee(db_session, sample_site, cfg_test):
     """Une trajectoire précédente + SoC réel très éloigné → statut 'corrective'."""
-    debut = datetime(2026, 4, 18, 10, tzinfo=UTC)
+    debut = _debut_test()
     _remplir_forecasts(db_session, sample_site.site_id, debut, conso=30.0, pv=20.0)
 
     # Première optimisation pour avoir une trajectoire précédente.
@@ -103,7 +106,6 @@ def test_pipeline_statut_corrective_si_derive_elevee(db_session, sample_site, cf
         db_session,
         site_id=sample_site.site_id,
         soc_actuel_kwh=100.0,
-        timestamp_requete=debut,
         cfg=cfg_test,
     )
 
@@ -112,7 +114,6 @@ def test_pipeline_statut_corrective_si_derive_elevee(db_session, sample_site, cf
         db_session,
         site_id=sample_site.site_id,
         soc_actuel_kwh=20.0,  # capacité 200 → dérive potentielle importante
-        timestamp_requete=debut + timedelta(minutes=15),
         cfg=cfg_test,
     )
     # Le statut est corrective si la dérive dépasse le seuil (10 %).

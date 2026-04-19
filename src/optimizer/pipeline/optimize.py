@@ -88,7 +88,6 @@ def run_optimization(
     session: Session,
     site_id: str,
     soc_actuel_kwh: float,
-    timestamp_requete: datetime,
     cfg: ConfigYaml,
 ) -> ResultatOptimisation:
     """
@@ -104,13 +103,14 @@ def run_optimization(
     7. Déterminer le statut, écrire en DB, retourner les 96 premiers pas.
     """
     t0 = time.perf_counter()
+    now = datetime.now(tz=UTC)
     logger.info("run_optimization START | site=%s | soc=%.1f kWh", site_id, soc_actuel_kwh)
 
     site = readers.get_site(session, site_id)
     if site is None:
         raise SiteNotFoundError(f"site_id inconnu : {site_id}")
 
-    horizon_debut = _floor_pas(timestamp_requete, cfg.pas_minutes)
+    horizon_debut = _floor_pas(now, cfg.pas_minutes)
     horizon_fin = horizon_debut + timedelta(hours=cfg.horizon_interne_h)
     pas_delta = timedelta(minutes=cfg.pas_minutes)
     timestamps = [horizon_debut + i * pas_delta for i in range(cfg.nb_pas_interne)]
@@ -144,7 +144,7 @@ def run_optimization(
     capacite_bess = float(site.capacite_bess_kwh)
     derniere = readers.get_derniere_trajectoire(session, site_id)
     derive_pct = calcul_derive_pct(
-        session, derniere, soc_actuel_kwh, timestamp_requete, capacite_bess
+        session, derniere, soc_actuel_kwh, now, capacite_bess
     )
 
     entree = SolverInput(
