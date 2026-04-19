@@ -7,6 +7,7 @@ Point d'entrée appelé par la route `POST /api/v1/optimize`.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -102,6 +103,9 @@ def run_optimization(
     6. Résoudre le LP.
     7. Déterminer le statut, écrire en DB, retourner les 96 premiers pas.
     """
+    t0 = time.perf_counter()
+    logger.info("run_optimization START | site=%s | soc=%.1f kWh", site_id, soc_actuel_kwh)
+
     site = readers.get_site(session, site_id)
     if site is None:
         raise SiteNotFoundError(f"site_id inconnu : {site_id}")
@@ -125,6 +129,17 @@ def run_optimization(
         )
 
     prix = readers.get_prix_spots(session, site_id, timestamps, cfg.prix_spot_defaut_eur_mwh)
+
+    nb_conso_ok = sum(1 for p in conso if not p.est_fallback)
+    nb_pv_ok = sum(1 for p in pv if not p.est_fallback)
+    nb_prix_ok = sum(1 for p in prix if not p.est_fallback)
+    logger.info(
+        "forecasts chargés | site=%s | conso=%d/%d | pv=%d/%d | prix=%d/%d",
+        site_id,
+        nb_conso_ok, len(conso),
+        nb_pv_ok, len(pv),
+        nb_prix_ok, len(prix),
+    )
 
     capacite_bess = float(site.capacite_bess_kwh)
     derniere = readers.get_derniere_trajectoire(session, site_id)
@@ -167,11 +182,12 @@ def run_optimization(
     )
 
     logger.info(
-        "run_optimization | site=%s | statut=%s | derive=%s | cout=%.2f",
+        "run_optimization END | site=%s | statut=%s | derive=%s | cout=%.2f | %.0fms",
         site_id,
         statut,
         f"{derive_pct:.1f}%" if derive_pct is not None else "n/a",
         sortie.cout_total_eur,
+        (time.perf_counter() - t0) * 1000,
     )
 
     pas_reponse = sortie.pas[: cfg.nb_pas_reponse]

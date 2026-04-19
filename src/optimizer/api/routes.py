@@ -51,6 +51,7 @@ def post_optimize(
     cfg: ConfigYaml = Depends(get_config),
 ) -> OptimizeResponse:
     auth.verifier_cle_pour_site(request.site_id, authorization)
+    logger.info("optimize | site=%s | soc=%.1f kWh", request.site_id, request.soc_actuel_kwh)
     try:
         resultat = pipeline.run_optimization(
             session=session,

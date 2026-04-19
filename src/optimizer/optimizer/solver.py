@@ -8,6 +8,7 @@ sur le bus). Voir CLAUDE.md §Formulation pour le détail mathématique.
 from __future__ import annotations
 
 import logging
+import time
 
 import cvxpy as cp
 import numpy as np
@@ -87,7 +88,10 @@ def solve(entree: SolverInput) -> SolverOutput:
     objectif = cp.Minimize(cout_reseau + penalite)
 
     probleme = cp.Problem(objectif, contraintes)
+    logger.info("solve START | n_steps=%d | soc_init=%.1f kWh", n, entree.soc_initial_kwh)
+    t_solve = time.perf_counter()
     probleme.solve(solver=cp.HIGHS)
+    solve_ms = (time.perf_counter() - t_solve) * 1000
 
     if probleme.status not in ("optimal", "optimal_inaccurate"):
         raise InfeasibleProblemError(f"Solveur non convergent : statut={probleme.status}")
@@ -123,10 +127,11 @@ def solve(entree: SolverInput) -> SolverOutput:
     )
 
     logger.info(
-        "solve | status=%s | cout=%.2f EUR | slack_total=%.3f kWh",
+        "solve END | status=%s | cout=%.2f EUR | slack_total=%.3f kWh | %.0fms",
         probleme.status,
         cout_total_eur,
         slack_total_kwh,
+        solve_ms,
     )
 
     return SolverOutput(

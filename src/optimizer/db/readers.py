@@ -91,12 +91,19 @@ def get_forecast_consommation(
     si > 50 %).
     """
     connus = _fetch_most_recent_forecasts(session, ConsumptionForecast, site_id, debut, fin)
-    return [
+    result = [
         PrevisionPoint(timestamp=ts, valeur=connus[_strip_tz(ts)], est_fallback=False)
         if _strip_tz(ts) in connus
         else PrevisionPoint(timestamp=ts, valeur=0.0, est_fallback=True)
         for ts in timestamps_attendus
     ]
+    logger.debug(
+        "get_forecast_consommation | site=%s | %d/%d pas en DB",
+        site_id,
+        sum(1 for p in result if not p.est_fallback),
+        len(result),
+    )
+    return result
 
 
 def get_forecast_production_pv(
@@ -108,12 +115,19 @@ def get_forecast_production_pv(
 ) -> list[PrevisionPoint]:
     """Retourne les prévisions PV pour la fenêtre [debut, fin)."""
     connus = _fetch_most_recent_forecasts(session, PVProductionForecast, site_id, debut, fin)
-    return [
+    result = [
         PrevisionPoint(timestamp=ts, valeur=connus[_strip_tz(ts)], est_fallback=False)
         if _strip_tz(ts) in connus
         else PrevisionPoint(timestamp=ts, valeur=0.0, est_fallback=True)
         for ts in timestamps_attendus
     ]
+    logger.debug(
+        "get_forecast_production_pv | site=%s | %d/%d pas en DB",
+        site_id,
+        sum(1 for p in result if not p.est_fallback),
+        len(result),
+    )
+    return result
 
 
 def _prix_a_timestamp(session: Session, site_id: str, ts: datetime) -> float | None:

@@ -10,11 +10,14 @@ trajectoire comme "corrective".
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from optimizer.db.models import Trajectoire, TrajectoirePas
+
+logger = logging.getLogger(__name__)
 
 
 def calcul_derive_pct(
@@ -32,6 +35,7 @@ def calcul_derive_pct(
     le `timestamp` est le plus proche (et ≤) de `timestamp_requete`.
     """
     if trajectoire_precedente is None or capacite_bess_kwh <= 0:
+        logger.debug("drift | pas de trajectoire précédente — dérive non calculée")
         return None
 
     pas_proche = (
@@ -42,7 +46,10 @@ def calcul_derive_pct(
         .first()
     )
     if pas_proche is None:
+        logger.debug("drift | site=%s | aucun pas antérieur trouvé", trajectoire_precedente.site_id)
         return None
 
     ecart_kwh = abs(soc_actuel_kwh - pas_proche.soc_cible_kwh)
-    return float(ecart_kwh / capacite_bess_kwh * 100.0)
+    derive = float(ecart_kwh / capacite_bess_kwh * 100.0)
+    logger.info("drift | site=%s | derive=%.1f%%", trajectoire_precedente.site_id, derive)
+    return derive
