@@ -226,6 +226,18 @@ Calcule la trajectoire optimale pour un site. Nécessite un header
 }
 ```
 
+```bash
+curl -X POST http://127.0.0.1:8080/api/v1/optimize \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer demo1" \
+  -d '{
+    "site_id": "site-demo-01",
+    "soc_actuel_kwh": 150.0,
+    "capacite_bess_kwh": 200.0,
+    "timestamp_requete": "2026-04-19T10:00:00+02:00"
+  }'
+```
+
 **Réponse :**
 
 ```json
