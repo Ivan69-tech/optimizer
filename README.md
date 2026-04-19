@@ -29,7 +29,7 @@ La base PostgreSQL est **partagée** avec le Service de Prévision ; ce service 
 POST /api/v1/optimize
        │
        ▼
-api/routes.py          ←── validation Pydantic + auth Bearer
+api/routes.py          ←── validation Pydantic
        │
        ▼
 pipeline/optimize.py   ←── orchestration : lit DB → dérive → solveur → écrit
@@ -101,7 +101,7 @@ uv pip install -e ".[dev]"
 
 # Copier et adapter le fichier d'environnement
 cp .env.example .env
-# → éditer DATABASE_URL et SITE_API_KEYS dans .env
+# → éditer DATABASE_URL dans .env
 
 # Appliquer les migrations (crée les tables trajectoires_*)
 uv run alembic upgrade head
@@ -120,16 +120,11 @@ La documentation interactive Swagger est accessible sur `http://localhost:8080/d
 Copier `.env.example` en `.env` et renseigner les valeurs :
 
 
-| Variable        | Obligatoire | Description                                          |
-| --------------- | ----------- | ---------------------------------------------------- |
-| `DATABASE_URL`  | Oui         | `postgresql://user:password@host:5432/dbname`        |
-| `SITE_API_KEYS` | Oui         | JSON map site → clé API, ex. `{"site-01":"key_xxx"}` |
-| `LOG_LEVEL`     | Non         | Niveau de log (`INFO` par défaut)                    |
-| `CONFIG_PATH`   | Non         | Chemin vers `config.yaml` (`config.yaml` par défaut) |
-
-
-Les clés API sont vérifiées en **comparaison temporelle constante** pour prévenir
-les attaques par timing.
+| Variable       | Obligatoire | Description                                          |
+| -------------- | ----------- | ---------------------------------------------------- |
+| `DATABASE_URL` | Oui         | `postgresql://user:password@host:5432/dbname`        |
+| `LOG_LEVEL`    | Non         | Niveau de log (`INFO` par défaut)                    |
+| `CONFIG_PATH`  | Non         | Chemin vers `config.yaml` (`config.yaml` par défaut) |
 
 ---
 
@@ -212,8 +207,7 @@ L'image est construite depuis `docker/Dockerfile` (Python 3.11-slim) :
 
 ### `POST /api/v1/optimize`
 
-Calcule la trajectoire optimale pour un site. Nécessite un header
-`Authorization: Bearer <api_key>` correspondant au `site_id`.
+Calcule la trajectoire optimale pour un site.
 
 **Requête :**
 
@@ -229,7 +223,6 @@ Calcule la trajectoire optimale pour un site. Nécessite un header
 ```bash
 curl -X POST http://127.0.0.1:8080/api/v1/optimize \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer demo1" \
   -d '{
     "site_id": "site-demo-01",
     "soc_actuel_kwh": 150.0,
@@ -271,7 +264,6 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
 | Code  | Cause                                                        |
 | ----- | ------------------------------------------------------------ |
 | `200` | Succès (`ok`, `corrective` ou `degraded`)                    |
-| `403` | Clé API invalide ou ne correspond pas au site_id             |
 | `404` | site_id inconnu                                              |
 | `422` | Corps de requête invalide (Pydantic)                         |
 | `503` | DB inaccessible ou forecasts manquants (> 50 % de l'horizon) |
@@ -341,7 +333,6 @@ src/optimizer/
 ├── config.py            # Settings (.env) + ConfigYaml (config.yaml)
 ├── exceptions.py        # Exceptions métier → codes HTTP
 ├── api/
-│   ├── auth.py          # Validation Bearer token
 │   ├── routes.py        # Endpoints FastAPI
 │   └── schemas.py       # Modèles Pydantic entrée/sortie
 ├── db/

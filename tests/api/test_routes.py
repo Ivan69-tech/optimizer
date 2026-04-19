@@ -43,24 +43,9 @@ def _payload(site_id: str = "site-test-01"):
     }
 
 
-def _auth_header(key: str = "test-key-xxx"):
-    return {"Authorization": f"Bearer {key}"}
-
-
-def test_post_optimize_401_sans_header(client):
-    response = client.post("/api/v1/optimize", json=_payload())
-    assert response.status_code == 401
-
-
-def test_post_optimize_403_si_cle_invalide(client):
-    headers = _auth_header("mauvaise-cle")
-    response = client.post("/api/v1/optimize", json=_payload(), headers=headers)
-    assert response.status_code == 403
-
-
 def test_post_optimize_422_si_payload_invalide(client):
     mauvais = {"site_id": "x", "soc_actuel_kwh": -1.0}  # soc_actuel négatif
-    response = client.post("/api/v1/optimize", json=mauvais, headers=_auth_header())
+    response = client.post("/api/v1/optimize", json=mauvais)
     assert response.status_code == 422
 
 
@@ -69,7 +54,7 @@ def test_post_optimize_404_si_site_inconnu(client, monkeypatch):
         raise SiteNotFoundError("inconnu")
 
     monkeypatch.setattr(routes.pipeline, "run_optimization", fake_run)
-    response = client.post("/api/v1/optimize", json=_payload(), headers=_auth_header())
+    response = client.post("/api/v1/optimize", json=_payload())
     assert response.status_code == 404
 
 
@@ -78,7 +63,7 @@ def test_post_optimize_503_si_forecasts_manquants(client, monkeypatch):
         raise ForecastsMissingError("forecasts KO")
 
     monkeypatch.setattr(routes.pipeline, "run_optimization", fake_run)
-    response = client.post("/api/v1/optimize", json=_payload(), headers=_auth_header())
+    response = client.post("/api/v1/optimize", json=_payload())
     assert response.status_code == 503
 
 
@@ -106,7 +91,7 @@ def test_post_optimize_happy_path(client, monkeypatch):
         )
 
     monkeypatch.setattr(routes.pipeline, "run_optimization", fake_run)
-    response = client.post("/api/v1/optimize", json=_payload(), headers=_auth_header())
+    response = client.post("/api/v1/optimize", json=_payload())
     assert response.status_code == 200
     data = response.json()
     assert data["statut"] == "ok"

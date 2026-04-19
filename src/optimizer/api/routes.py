@@ -6,11 +6,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from optimizer.api import auth
 from optimizer.api.schemas import (
     HealthResponse,
     OptimizeRequest,
@@ -46,11 +45,9 @@ def get_config() -> ConfigYaml:
 @router.post("/optimize", response_model=OptimizeResponse)
 def post_optimize(
     request: OptimizeRequest,
-    authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
     cfg: ConfigYaml = Depends(get_config),
 ) -> OptimizeResponse:
-    auth.verifier_cle_pour_site(request.site_id, authorization)
     logger.info("optimize | site=%s | soc=%.1f kWh", request.site_id, request.soc_actuel_kwh)
     try:
         resultat = pipeline.run_optimization(
@@ -114,11 +111,9 @@ def get_health(session: Session = Depends(get_session)) -> HealthResponse:
 @router.get("/sites/{site_id}/trajectory", response_model=OptimizeResponse)
 def get_trajectory(
     site_id: str,
-    authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
     cfg: ConfigYaml = Depends(get_config),
 ) -> OptimizeResponse:
-    auth.verifier_cle_pour_site(site_id, authorization)
     trajectoire = readers.get_derniere_trajectoire(session, site_id)
     if trajectoire is None:
         raise HTTPException(
@@ -147,10 +142,8 @@ def get_trajectory(
 @router.get("/sites/{site_id}/status", response_model=SiteStatus)
 def get_status(
     site_id: str,
-    authorization: str | None = Header(default=None),
     session: Session = Depends(get_session),
 ) -> SiteStatus:
-    auth.verifier_cle_pour_site(site_id, authorization)
     trajectoire = readers.get_derniere_trajectoire(session, site_id)
     if trajectoire is None:
         return SiteStatus(site_id=site_id)

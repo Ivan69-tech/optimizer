@@ -15,5 +15,3 @@ class InfeasibleProblemError(Exception):
     """Levée quand le solveur LP échoue (infaisable même avec slack actif)."""
 
 
-class UnauthorizedError(Exception):
-    """Levée quand la clé API ne correspond pas au site_id de la requête."""

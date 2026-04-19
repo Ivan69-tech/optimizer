@@ -7,7 +7,6 @@ Configuration du service : variables d'environnement + fichier YAML.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,25 +20,11 @@ class Settings(BaseSettings):
     # Base de données
     database_url: str = "postgresql://optimizer:optimizer@localhost:5432/optimizer"
 
-    # Authentification API — JSON map {site_id: api_key}
-    site_api_keys: str = "{}"
-
     # Chemin du fichier de configuration fonctionnelle
     config_path: Path = Path("config.yaml")
 
     # Logging
     log_level: str = "INFO"
-
-    def parsed_api_keys(self) -> dict[str, str]:
-        """Parse SITE_API_KEYS (JSON) en dict Python."""
-        try:
-            data = json.loads(self.site_api_keys)
-        except json.JSONDecodeError as err:
-            raise ValueError(f"SITE_API_KEYS n'est pas un JSON valide : {err}") from err
-        if not isinstance(data, dict):
-            raise ValueError("SITE_API_KEYS doit être un objet JSON {site_id: key}.")
-        return {str(k): str(v) for k, v in data.items()}
-
 
 settings = Settings()
 

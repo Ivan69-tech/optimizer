@@ -38,12 +38,6 @@ def create_app() -> FastAPI:
         settings.config_path,
     )
     try:
-        sites = list(settings.parsed_api_keys().keys())
-    except ValueError:
-        sites = []
-        logger.warning("SITE_API_KEYS invalide — aucun site configuré")
-    logger.info("Sites configurés : %s", sites)
-    try:
         from optimizer.db.session import engine
         with engine.connect():
             pass

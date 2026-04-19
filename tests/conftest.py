@@ -11,7 +11,6 @@ import os
 
 # Env vars requises avant l'import du package optimizer (Settings est eager).
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-os.environ.setdefault("SITE_API_KEYS", '{"site-test-01": "test-key-xxx"}')
 os.environ.setdefault("CONFIG_PATH", "config.yaml")
 
 import pytest
