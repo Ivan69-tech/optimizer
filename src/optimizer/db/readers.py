@@ -77,7 +77,7 @@ def _fetch_most_recent_forecasts(
     )
     plus_recents: dict[datetime, tuple[float, datetime]] = {}
     for ts, puissance, gen in rows:
-        cle = _strip_tz(ts)
+        cle = _strip_tz(ts).replace(second=0, microsecond=0)
         existant = plus_recents.get(cle)
         if existant is None or existant[1] < gen:
             plus_recents[cle] = (float(puissance), gen)
