@@ -1,6 +1,6 @@
-# Service d'Optimisation BESS — SGE Tewa Solar
+# Service d'Optimisation BESS
 
-Microservice REST du **Système de Gestion de l'Énergie (SGE)** de Tewa Solar.
+Microservice REST du **Système de Gestion de l'Énergie**.
 Il calcule en temps réel la **trajectoire de charge/décharge optimale** d'un système
 de stockage batterie (BESS) sur 24 heures, en minimisant le coût d'échange avec le réseau.
 
@@ -41,7 +41,6 @@ pipeline/optimize.py   ←── orchestration : lit DB → dérive → solveur 
 
 ### Pile technique
 
-
 | Composant       | Technologie                                   |
 | --------------- | --------------------------------------------- |
 | API REST        | FastAPI + Uvicorn                             |
@@ -53,7 +52,6 @@ pipeline/optimize.py   ←── orchestration : lit DB → dérive → solveur 
 | Tests           | pytest + SQLite en mémoire                    |
 | Packaging       | uv + hatchling                                |
 | Conteneur       | Docker (Python 3.11-slim)                     |
-
 
 ---
 
@@ -119,7 +117,6 @@ La documentation interactive Swagger est accessible sur `http://localhost:8080/d
 
 Copier `.env.example` en `.env` et renseigner les valeurs :
 
-
 | Variable       | Obligatoire | Description                                          |
 | -------------- | ----------- | ---------------------------------------------------- |
 | `DATABASE_URL` | Oui         | `postgresql://user:password@host:5432/dbname`        |
@@ -132,7 +129,6 @@ Copier `.env.example` en `.env` et renseigner les valeurs :
 
 Les paramètres fonctionnels sont séparés des secrets dans `config.yaml` :
 
-
 | Paramètre                   | Défaut      | Description                                      |
 | --------------------------- | ----------- | ------------------------------------------------ |
 | `prix_spot_defaut_eur_mwh`  | `80.0`      | Prix fallback si aucun prix disponible           |
@@ -141,7 +137,6 @@ Les paramètres fonctionnels sont séparés des secrets dans `config.yaml` :
 | `horizon_interne_h`         | `48`        | Horizon d'optimisation interne                   |
 | `horizon_reponse_h`         | `24`        | Horizon retourné au contrôleur                   |
 | `pas_minutes`               | `15`        | Pas de temps (minutes)                           |
-
 
 ---
 
@@ -247,7 +242,6 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
 
 `energie_kwh` en **convention producteur** : positif = décharge BESS, négatif = charge.
 
-
 | Statut       | Signification                                                |
 | ------------ | ------------------------------------------------------------ |
 | `ok`         | Trajectoire optimale sans contrainte violée                  |
@@ -255,9 +249,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
 | `degraded`   | Puissance souscrite impossible à tenir (slack activé)        |
 | `error`      | Erreur interne (DB inaccessible, forecasts manquants > 50 %) |
 
-
 **Codes HTTP :**
-
 
 | Code  | Cause                                                        |
 | ----- | ------------------------------------------------------------ |
@@ -265,7 +257,6 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
 | `404` | site_id inconnu                                              |
 | `422` | Corps de requête invalide (Pydantic)                         |
 | `503` | DB inaccessible ou forecasts manquants (> 50 % de l'horizon) |
-
 
 ### `GET /api/v1/health`
 
@@ -345,4 +336,3 @@ src/optimizer/
     ├── optimize.py      # Orchestration complète
     └── drift.py         # Calcul de dérive SoC
 ```
-

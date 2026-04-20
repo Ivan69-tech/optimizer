@@ -4,8 +4,7 @@ Ce fichier donne les instructions à Claude Code pour travailler dans ce repo.
 
 ## Rôle du service
 
-Ce repo implémente le **Service d'Optimisation BESS** du SGE (Système de Gestion de l'Énergie)
-de Tewa Solar. Il expose une API REST accessible depuis chaque contrôleur terrain (via VPN).
+Ce repo implémente le **Service d'Optimisation BESS**. Il expose une API REST accessible depuis chaque contrôleur terrain (via VPN).
 
 Son rôle : calculer la **trajectoire énergétique optimale** d'une batterie (BESS) sur un
 horizon de 24 heures (96 pas de 15 min), à partir des prévisions de consommation, de
@@ -114,6 +113,7 @@ Séparer charge et décharge en deux variables positives permet de rester en LP 
 simultanément si les prix sont cohérents.
 
 Puissance nette BESS en convention producteur :
+
 ```
 P_bess(t) = (e_decharge(t) - e_charge(t)) / 0.25   # positif = décharge (production)
 ```
@@ -252,6 +252,7 @@ CREATE TABLE trajectoire_pas (
 ### POST /api/v1/optimize — calcul de trajectoire
 
 **Requête :**
+
 ```json
 {
   "site_id": "string",
@@ -261,6 +262,7 @@ CREATE TABLE trajectoire_pas (
 ```
 
 **Réponse :**
+
 ```json
 {
   "site_id": "string",
@@ -285,6 +287,7 @@ La trajectoire retournée couvre toujours exactement 24 h (96 pas).
 L'optimisation interne sur 48 h est transparente pour l'appelant.
 
 **Codes HTTP :**
+
 - `200` — trajectoire calculée (statut `ok`, `corrective` ou `degraded`)
 - `404` — site_id inconnu
 - `422` — requête invalide (Pydantic)

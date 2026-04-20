@@ -1,7 +1,7 @@
 [project]
 name = "optimizer"
 version = "0.1.0"
-description = "L2 — Service d'Optimisation BESS SGE (Tewa Solar)"
+description = "Service d'Optimisation BESS SGE"
 requires-python = ">=3.11"
 dependencies = [
     # API

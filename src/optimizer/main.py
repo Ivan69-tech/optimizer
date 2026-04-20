@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     )
     try:
         from optimizer.db.session import engine
+
         with engine.connect():
             pass
         logger.info("DB connectée")
@@ -47,7 +48,7 @@ def create_app() -> FastAPI:
 
     application = FastAPI(
         title="Service d'Optimisation BESS",
-        description="L2 — Trajectoire énergétique optimale d'une batterie (Tewa Solar SGE).",
+        description="L2 — Trajectoire énergétique optimale d'une batterie",
         version="0.1.0",
     )
 
