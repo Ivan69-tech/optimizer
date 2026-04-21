@@ -119,7 +119,7 @@ def get_trajectory(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Aucune trajectoire pour site_id={site_id}.",
         )
-    pas = readers.get_pas_trajectoire(session, trajectoire.id)
+    pas = readers.get_pas_trajectoire(session, site_id)
     pas_reponse = pas[: cfg.nb_pas_reponse]
     return OptimizeResponse(
         site_id=trajectoire.site_id,

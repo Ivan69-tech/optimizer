@@ -226,11 +226,11 @@ def get_derniere_trajectoire(session: Session, site_id: str) -> Trajectoire | No
     )
 
 
-def get_pas_trajectoire(session: Session, trajectoire_id: int) -> list[TrajectoirePas]:
-    """Retourne les pas d'une trajectoire, triés par timestamp."""
+def get_pas_trajectoire(session: Session, site_id: str) -> list[TrajectoirePas]:
+    """Retourne tous les pas enregistrés pour un site, triés par timestamp."""
     return (
         session.query(TrajectoirePas)
-        .filter(TrajectoirePas.trajectoire_id == trajectoire_id)
+        .filter(TrajectoirePas.site_id == site_id)
         .order_by(TrajectoirePas.timestamp)
         .all()
     )

@@ -14,7 +14,7 @@ ce service les lit uniquement.
 from datetime import datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -103,22 +103,23 @@ class Trajectoire(Base):
     horizon_debut: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     horizon_fin: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    pas: Mapped[list["TrajectoirePas"]] = relationship(
-        back_populates="trajectoire", cascade="all, delete-orphan"
-    )
 
 
 class TrajectoirePas(Base):
-    """Table `trajectoire_pas` — un pas de 15 min d'une trajectoire (convention producteur)."""
+    """Table `trajectoire_pas` — table glissante : une ligne par (site_id, timestamp).
+
+    À chaque recalcul, les pas futurs (timestamp >= horizon_debut) sont supprimés puis
+    réinsérés. Les pas passés sont conservés indéfiniment.
+    """
 
     __tablename__ = "trajectoire_pas"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    trajectoire_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("trajectoires_optimisees.id", ondelete="CASCADE"), nullable=False
+    site_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("sites.site_id"), nullable=False, primary_key=True
     )
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, primary_key=True
+    )
     energie_kwh: Mapped[float] = mapped_column(Float, nullable=False)
     soe_cible_kwh: Mapped[float] = mapped_column(Float, nullable=False)
-
-    trajectoire: Mapped["Trajectoire"] = relationship(back_populates="pas")
+    insertion_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

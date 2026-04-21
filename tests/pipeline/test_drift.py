@@ -10,6 +10,34 @@ from optimizer.db.models import Trajectoire, TrajectoirePas
 from optimizer.pipeline.drift import calcul_derive_pct
 
 
+def _insert_traj(db_session, sample_site, horizon_debut, pas_data):
+    """Insère une trajectoire + ses pas dans la DB."""
+    traj = Trajectoire(
+        site_id=sample_site.site_id,
+        timestamp_calcul=horizon_debut,
+        soe_initial_kwh=100.0,
+        statut="ok",
+        message=None,
+        derive_pct=None,
+        horizon_debut=horizon_debut,
+        horizon_fin=horizon_debut + timedelta(hours=48),
+    )
+    db_session.add(traj)
+    now = datetime.now(tz=UTC)
+    for ts, soe in pas_data:
+        db_session.add(
+            TrajectoirePas(
+                site_id=sample_site.site_id,
+                timestamp=ts,
+                energie_kwh=0.0,
+                soe_cible_kwh=soe,
+                insertion_timestamp=now,
+            )
+        )
+    db_session.flush()
+    return traj
+
+
 def test_derive_sans_trajectoire_precedente_retourne_none(db_session, sample_site):
     derive = calcul_derive_pct(
         db_session,
@@ -23,25 +51,13 @@ def test_derive_sans_trajectoire_precedente_retourne_none(db_session, sample_sit
 
 def test_derive_avec_trajectoire_mais_sans_pas_pertinent(db_session, sample_site):
     """Tous les pas sont postérieurs à la requête → pas de pas proche."""
-    traj = Trajectoire(
-        site_id=sample_site.site_id,
-        timestamp_calcul=datetime(2026, 4, 18, 9, tzinfo=UTC),
-        soe_initial_kwh=100.0,
-        statut="ok",
-        message=None,
-        derive_pct=None,
-        horizon_debut=datetime(2026, 4, 18, 10, tzinfo=UTC),
-        horizon_fin=datetime(2026, 4, 20, 10, tzinfo=UTC),
-        pas=[
-            TrajectoirePas(
-                timestamp=datetime(2026, 4, 18, 10, 0, tzinfo=UTC),
-                energie_kwh=0.0,
-                soe_cible_kwh=100.0,
-            )
-        ],
+    t_pas = datetime(2026, 4, 18, 10, 0, tzinfo=UTC)
+    traj = _insert_traj(
+        db_session,
+        sample_site,
+        horizon_debut=datetime(2026, 4, 18, 9, tzinfo=UTC),
+        pas_data=[(t_pas, 100.0)],
     )
-    db_session.add(traj)
-    db_session.flush()
 
     derive = calcul_derive_pct(
         db_session,
@@ -55,26 +71,14 @@ def test_derive_avec_trajectoire_mais_sans_pas_pertinent(db_session, sample_site
 
 def test_derive_calculee_correctement(db_session, sample_site):
     """Écart de 20 kWh sur capacité 200 → dérive 10 %."""
-    traj = Trajectoire(
-        site_id=sample_site.site_id,
-        timestamp_calcul=datetime(2026, 4, 18, 9, tzinfo=UTC),
-        soe_initial_kwh=100.0,
-        statut="ok",
-        message=None,
-        derive_pct=None,
-        horizon_debut=datetime(2026, 4, 18, 9, tzinfo=UTC),
-        horizon_fin=datetime(2026, 4, 20, 9, tzinfo=UTC),
-        pas=[
-            TrajectoirePas(
-                timestamp=datetime(2026, 4, 18, 9, 0, tzinfo=UTC) + timedelta(minutes=15 * i),
-                energie_kwh=0.0,
-                soe_cible_kwh=100.0,
-            )
-            for i in range(4)
-        ],
+    t0 = datetime(2026, 4, 18, 9, 0, tzinfo=UTC)
+    pas_data = [(t0 + timedelta(minutes=15 * i), 100.0) for i in range(4)]
+    traj = _insert_traj(
+        db_session,
+        sample_site,
+        horizon_debut=t0,
+        pas_data=pas_data,
     )
-    db_session.add(traj)
-    db_session.flush()
 
     derive = calcul_derive_pct(
         db_session,

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from optimizer.db.models import Trajectoire, TrajectoirePas
@@ -39,12 +40,36 @@ def save_trajectoire(
     pas: list[PasTrajectoireNouveau],
 ) -> Trajectoire:
     """
-    Insère atomiquement une trajectoire et tous ses pas.
+    Sauvegarde une trajectoire en mode glissant.
 
-    La session est `flush()`-ée pour attribuer l'id auto-incrémenté, mais pas
-    commit-ée — le commit reste à la charge de l'appelant (géré par
-    `get_session()` en mode dépendance FastAPI).
+    1. Supprime les pas futurs (timestamp >= horizon_debut) pour ce site.
+    2. Insère les nouveaux pas avec insertion_timestamp = now.
+    3. Insère les métadonnées dans trajectoires_optimisees (journal d'audit).
+
+    La session n'est pas commit-ée — le commit reste à la charge de l'appelant.
     """
+    now = datetime.now(tz=UTC)
+
+    session.execute(
+        delete(TrajectoirePas).where(
+            TrajectoirePas.site_id == site_id,
+            TrajectoirePas.timestamp >= horizon_debut,
+        )
+    )
+
+    session.add_all(
+        [
+            TrajectoirePas(
+                site_id=site_id,
+                timestamp=p.timestamp,
+                energie_kwh=p.energie_kwh,
+                soe_cible_kwh=p.soe_cible_kwh,
+                insertion_timestamp=now,
+            )
+            for p in pas
+        ]
+    )
+
     trajectoire = Trajectoire(
         site_id=site_id,
         timestamp_calcul=timestamp_calcul,
@@ -54,14 +79,6 @@ def save_trajectoire(
         derive_pct=derive_pct,
         horizon_debut=horizon_debut,
         horizon_fin=horizon_fin,
-        pas=[
-            TrajectoirePas(
-                timestamp=p.timestamp,
-                energie_kwh=p.energie_kwh,
-                soe_cible_kwh=p.soe_cible_kwh,
-            )
-            for p in pas
-        ],
     )
     session.add(trajectoire)
     session.flush()

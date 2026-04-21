@@ -40,7 +40,7 @@ def calcul_derive_pct(
 
     pas_proche = (
         session.query(TrajectoirePas)
-        .filter(TrajectoirePas.trajectoire_id == trajectoire_precedente.id)
+        .filter(TrajectoirePas.site_id == trajectoire_precedente.site_id)
         .filter(TrajectoirePas.timestamp <= timestamp_requete)
         .order_by(TrajectoirePas.timestamp.desc())
         .first()
