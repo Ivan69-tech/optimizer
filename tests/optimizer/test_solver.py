@@ -22,8 +22,6 @@ def _site(p_max_injection_kw: float = 120.0, p_max_soutirage_kw: float = 150.0) 
         capacite_bess_kwh=200.0,
         p_max_bess_kw=100.0,
         p_souscrite_kw=150.0,
-        soc_min_pct=10.0,
-        soc_max_pct=90.0,
         p_max_injection_kw=p_max_injection_kw,
         p_max_soutirage_kw=p_max_soutirage_kw,
         rendement_bess=0.95,
@@ -49,15 +47,13 @@ def _input(site: SiteParams, *, conso: float, pv: float, prix: float) -> SolverI
 
 
 def test_bornes_soc_respectees():
-    """Le SoC doit rester dans [soc_min, soc_max] à chaque pas."""
+    """Le SoC doit rester dans [0, capacite_bess_kwh] à chaque pas."""
     entree = _input(_site(), conso=50.0, pv=0.0, prix=80.0)
     sortie = solve(entree)
 
-    soc_min = 200.0 * 10.0 / 100.0
-    soc_max = 200.0 * 90.0 / 100.0
     tol = 1e-3
     for pas in sortie.pas:
-        assert soc_min - tol <= pas.soc_cible_kwh <= soc_max + tol
+        assert -tol <= pas.soc_cible_kwh <= 200.0 + tol
 
 
 def test_bilan_puissance_convention_producteur():
@@ -108,8 +104,6 @@ def test_statut_degraded_si_slack_actif():
         capacite_bess_kwh=200.0,
         p_max_bess_kw=100.0,
         p_souscrite_kw=100.0,
-        soc_min_pct=10.0,
-        soc_max_pct=90.0,
         p_max_injection_kw=0.0,
         p_max_soutirage_kw=500.0,  # pipe physique large : la limite c'est le contrat
         rendement_bess=0.95,

@@ -16,8 +16,6 @@ class SiteParams:
     capacite_bess_kwh: float
     p_max_bess_kw: float
     p_souscrite_kw: float
-    soc_min_pct: float
-    soc_max_pct: float
     p_max_injection_kw: float
     p_max_soutirage_kw: float
     rendement_bess: float

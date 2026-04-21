@@ -41,8 +41,8 @@ def solve(entree: SolverInput) -> SolverOutput:
     pv = np.asarray(entree.pv_kw, dtype=float)
     prix_eur_kwh = np.asarray(entree.prix_eur_mwh, dtype=float) / 1000.0
 
-    soc_min = site.capacite_bess_kwh * site.soc_min_pct / 100.0
-    soc_max = site.capacite_bess_kwh * site.soc_max_pct / 100.0
+    soc_min = 0.0
+    soc_max = site.capacite_bess_kwh
     e_bess_max = site.p_max_bess_kw * pas_h  # kWh max par pas
 
     e_charge = cp.Variable(n, nonneg=True)
@@ -67,9 +67,6 @@ def solve(entree: SolverInput) -> SolverOutput:
         # Bornes SoC sur tous les états intermédiaires et final.
         soc_apres_pas >= soc_min,
         soc_apres_pas <= soc_max,
-        # État initial déjà dans les bornes (sinon le problème est infaisable).
-        entree.soc_initial_kwh >= soc_min - 1e-6,
-        entree.soc_initial_kwh <= soc_max + 1e-6,
         # Puissance BESS max (charge et décharge séparément).
         e_charge <= e_bess_max,
         e_decharge <= e_bess_max,

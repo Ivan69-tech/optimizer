@@ -157,8 +157,8 @@ minimiser  Σ_{t=0}^{191}  (-P_pdl(t)) × prix_spot(t) × 0.25
 ### Contraintes
 
 ```
-# 1. Bornes SoC
-SoC_min_kwh  ≤  SoC(t)  ≤  SoC_max_kwh                           ∀ t
+# 1. Bornes SoC — limites physiques de la batterie
+0  ≤  SoC(t)  ≤  capacite_bess_kwh                                 ∀ t
 
 # 2. Puissance max BESS (charge et décharge séparées)
 e_charge(t)   / 0.25  ≤  p_max_bess_kw                            ∀ t
@@ -176,10 +176,6 @@ P_pdl(t)  ≥  -p_souscrite_kw                                       ∀ t
 #    On ne soutire jamais plus que la puissance souscrite.
 #    Si cette contrainte rend le problème infaisable (P_conso - P_pv - P_max_bess > p_souscrite),
 #    on ajoute une variable slack ≥ 0 avec pénalité très élevée et on retourne statut "degraded".
-
-# 5. Conversions SoC
-SoC_min_kwh = capacite_bess_kwh × soc_min_pct / 100
-SoC_max_kwh = capacite_bess_kwh × soc_max_pct / 100
 ```
 
 ---
@@ -206,7 +202,7 @@ La fonction `get_prix_spots(site_id, debut, fin)` retourne toujours un array com
 
 | Table | Colonnes utilisées |
 |-------|--------------------|
-| `sites` | `site_id`, `capacite_bess_kwh`, `p_max_bess_kw`, `p_souscrite_kw`, `soc_min_pct`, `soc_max_pct`, `p_max_injection_kw`, `p_max_soutirage_kw`, `rendement_bess` |
+| `sites` | `site_id`, `capacite_bess_kwh`, `p_max_bess_kw`, `p_souscrite_kw`, `p_max_injection_kw`, `p_max_soutirage_kw`, `rendement_bess` |
 | `forecasts_consommation` | `site_id`, `timestamp`, `puissance_kw` (le plus récent `date_generation`) |
 | `forecasts_production_pv` | `site_id`, `timestamp`, `puissance_kw` (le plus récent `date_generation`) |
 | `forecasts_prix_spot` | `site_id`, `timestamp`, `prix_eur_mwh` |

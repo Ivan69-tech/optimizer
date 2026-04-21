@@ -55,8 +55,6 @@ def _to_site_params(site: Site) -> SiteParams:
         capacite_bess_kwh=float(site.capacite_bess_kwh),
         p_max_bess_kw=float(site.p_max_bess_kw),
         p_souscrite_kw=float(site.p_souscrite_kw),
-        soc_min_pct=float(site.soc_min_pct),
-        soc_max_pct=float(site.soc_max_pct),
         p_max_injection_kw=float(site.p_max_injection_kw),
         p_max_soutirage_kw=float(
             site.p_max_soutirage_kw if site.p_max_soutirage_kw is not None else site.p_souscrite_kw
@@ -146,6 +144,12 @@ def run_optimization(
     derive_pct = calcul_derive_pct(
         session, derniere, soc_actuel_kwh, now, capacite_bess
     )
+
+    capacite = float(site.capacite_bess_kwh)
+    if not (-1e-6 <= soc_actuel_kwh <= capacite + 1e-6):
+        raise ValueError(
+            f"soc_actuel={soc_actuel_kwh:.1f} kWh hors bornes [0, {capacite:.1f}] kWh."
+        )
 
     entree = SolverInput(
         site=_to_site_params(site),

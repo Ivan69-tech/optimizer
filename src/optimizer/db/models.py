@@ -32,8 +32,6 @@ class Site(Base):
     capacite_bess_kwh: Mapped[float] = mapped_column(Float, nullable=False)
     p_max_bess_kw: Mapped[float] = mapped_column(Float, nullable=False)
     p_souscrite_kw: Mapped[float] = mapped_column(Float, nullable=False)
-    soc_min_pct: Mapped[float] = mapped_column(Float, nullable=False, default=10.0)
-    soc_max_pct: Mapped[float] = mapped_column(Float, nullable=False, default=90.0)
 
     # Colonnes ajoutées par le forecaster — lues uniquement par ce service.
     # Defaults fournis pour robustesse si la migration forecaster n'est pas encore

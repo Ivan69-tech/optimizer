@@ -72,9 +72,10 @@ e_decharge(t)  ≥ 0   # énergie restituée par la batterie (kWh)
 min  Σ  (P_conso(t) - P_pv(t) - P_bess(t)) × prix_spot(t) × 0.25
 ```
 
-**Contraintes principales** : bornes SoC, puissance BESS, injection/soutirage PDL,
-puissance souscrite. Si la contrainte de puissance souscrite rend le problème infaisable
-(surcharge exceptionnelle), une variable slack est ajoutée et le statut passe à `"degraded"`.
+**Contraintes principales** : SoC borné entre 0 et `capacite_bess_kwh`, puissance BESS,
+injection/soutirage PDL, puissance souscrite. Si la contrainte de puissance souscrite rend
+le problème infaisable (surcharge exceptionnelle), une variable slack est ajoutée et le
+statut passe à `"degraded"`.
 
 ---
 
