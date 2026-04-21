@@ -210,7 +210,7 @@ Calcule la trajectoire optimale pour un site.
 ```json
 {
   "site_id": "site-01",
-  "soc_actuel_kwh": 150.0,
+  "soe_actuel_kwh": 150.0,
   "capacite_bess_kwh": 200.0
 }
 ```
@@ -220,7 +220,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
   -H "Content-Type: application/json" \
   -d '{
     "site_id": "site-demo-01",
-    "soc_actuel_kwh": 150.0,
+    "soe_actuel_kwh": 150.0,
     "capacite_bess_kwh": 200.0
   }'
 ```
@@ -233,8 +233,8 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
   "timestamp_calcul": "2026-04-19T10:00:03+02:00",
   "horizon_debut": "2026-04-19T10:00:00+02:00",
   "trajectoire": [
-    { "timestamp": "2026-04-19T10:00:00+02:00", "energie_kwh": 12.5,  "soc_cible_kwh": 137.5 },
-    { "timestamp": "2026-04-19T10:15:00+02:00", "energie_kwh": -10.0, "soc_cible_kwh": 147.0 }
+    { "timestamp": "2026-04-19T10:00:00+02:00", "energie_kwh": 12.5,  "soe_cible_kwh": 137.5 },
+    { "timestamp": "2026-04-19T10:15:00+02:00", "energie_kwh": -10.0, "soe_cible_kwh": 147.0 }
   ],
   "statut": "ok",
   "message": ""

@@ -2,7 +2,7 @@
 Calcul de la dérive entre la trajectoire précédente et l'état réel.
 
 La dérive est exprimée en pourcentage de la capacité totale de la batterie :
-    derive_pct = |soc_actuel_mesure − soc_prevu_par_derniere_trajectoire| / capacite × 100
+    derive_pct = |soe_actuel_mesure − soe_prevu_par_derniere_trajectoire| / capacite × 100
 
 Si la dérive dépasse le seuil configuré, le pipeline marque la nouvelle
 trajectoire comme "corrective".
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def calcul_derive_pct(
     session: Session,
     trajectoire_precedente: Trajectoire | None,
-    soc_actuel_kwh: float,
+    soe_actuel_kwh: float,
     timestamp_requete: datetime,
     capacite_bess_kwh: float,
 ) -> float | None:
@@ -49,7 +49,7 @@ def calcul_derive_pct(
         logger.debug("drift | site=%s | aucun pas antérieur trouvé", trajectoire_precedente.site_id)
         return None
 
-    ecart_kwh = abs(soc_actuel_kwh - pas_proche.soc_cible_kwh)
+    ecart_kwh = abs(soe_actuel_kwh - pas_proche.soe_cible_kwh)
     derive = float(ecart_kwh / capacite_bess_kwh * 100.0)
     logger.info("drift | site=%s | derive=%.1f%%", trajectoire_precedente.site_id, derive)
     return derive

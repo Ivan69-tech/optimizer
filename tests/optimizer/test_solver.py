@@ -36,7 +36,7 @@ def _timestamps(n: int = N) -> list[datetime]:
 def _input(site: SiteParams, *, conso: float, pv: float, prix: float) -> SolverInput:
     return SolverInput(
         site=site,
-        soc_initial_kwh=100.0,
+        soe_initial_kwh=100.0,
         timestamps=_timestamps(),
         conso_kw=[conso] * N,
         pv_kw=[pv] * N,
@@ -46,14 +46,14 @@ def _input(site: SiteParams, *, conso: float, pv: float, prix: float) -> SolverI
     )
 
 
-def test_bornes_soc_respectees():
-    """Le SoC doit rester dans [0, capacite_bess_kwh] à chaque pas."""
+def test_bornes_soe_respectees():
+    """Le SoE doit rester dans [0, capacite_bess_kwh] à chaque pas."""
     entree = _input(_site(), conso=50.0, pv=0.0, prix=80.0)
     sortie = solve(entree)
 
     tol = 1e-3
     for pas in sortie.pas:
-        assert -tol <= pas.soc_cible_kwh <= 200.0 + tol
+        assert -tol <= pas.soe_cible_kwh <= 200.0 + tol
 
 
 def test_bilan_puissance_convention_producteur():
@@ -79,7 +79,7 @@ def test_site_sans_injection_ne_produit_pas_ppdl_positif():
     pv = [60.0 if 20 <= i < 30 else 0.0 for i in range(N)]
     entree = SolverInput(
         site=site,
-        soc_initial_kwh=40.0,  # laisse de la marge pour absorber (SoC_max = 180)
+        soe_initial_kwh=40.0,  # laisse de la marge pour absorber (SoE_max = 200)
         timestamps=_timestamps(),
         conso_kw=conso,
         pv_kw=pv,
@@ -110,7 +110,7 @@ def test_statut_degraded_si_slack_actif():
     )
     entree = SolverInput(
         site=site,
-        soc_initial_kwh=20.0,  # SoC au plancher → pas de décharge possible
+        soe_initial_kwh=20.0,  # SoE bas → peu de décharge possible
         timestamps=_timestamps(),
         conso_kw=[250.0] * N,  # 250 > p_souscrite (100) + p_max_bess (100) = 200
         pv_kw=[0.0] * N,
@@ -122,11 +122,11 @@ def test_statut_degraded_si_slack_actif():
     assert sortie.slack_total_kwh > 0.1
 
 
-def test_solveur_leve_si_soc_initial_hors_bornes():
-    """SoC initial > SoC_max rend le problème infaisable (slack ne sauve pas la borne SoC)."""
+def test_solveur_leve_si_soe_initial_hors_bornes():
+    """SoE initial > capacite_bess_kwh → problème infaisable (la borne SoE n'a pas de slack)."""
     entree = SolverInput(
         site=_site(),
-        soc_initial_kwh=1000.0,  # 500% de la capacité
+        soe_initial_kwh=1000.0,  # 500% de la capacité
         timestamps=_timestamps(),
         conso_kw=[50.0] * N,
         pv_kw=[0.0] * N,
@@ -147,7 +147,7 @@ def test_solveur_preferera_charger_quand_prix_bas_et_decharger_quand_prix_eleve(
 
     entree = SolverInput(
         site=_site(),
-        soc_initial_kwh=100.0,
+        soe_initial_kwh=100.0,
         timestamps=_timestamps(),
         conso_kw=[30.0] * N,
         pv_kw=[0.0] * N,

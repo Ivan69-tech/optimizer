@@ -48,12 +48,12 @@ def post_optimize(
     session: Session = Depends(get_session),
     cfg: ConfigYaml = Depends(get_config),
 ) -> OptimizeResponse:
-    logger.info("optimize | site=%s | soc=%.1f kWh", request.site_id, request.soc_actuel_kwh)
+    logger.info("optimize | site=%s | soe=%.1f kWh", request.site_id, request.soe_actuel_kwh)
     try:
         resultat = pipeline.run_optimization(
             session=session,
             site_id=request.site_id,
-            soc_actuel_kwh=request.soc_actuel_kwh,
+            soe_actuel_kwh=request.soe_actuel_kwh,
             cfg=cfg,
         )
     except SiteNotFoundError as err:
@@ -76,7 +76,7 @@ def post_optimize(
             TrajectoryStep(
                 timestamp=p.timestamp,
                 energie_kwh=p.energie_kwh,
-                soc_cible_kwh=p.soc_cible_kwh,
+                soe_cible_kwh=p.soe_cible_kwh,
             )
             for p in resultat.pas_reponse
         ],
@@ -129,7 +129,7 @@ def get_trajectory(
             TrajectoryStep(
                 timestamp=p.timestamp,
                 energie_kwh=p.energie_kwh,
-                soc_cible_kwh=p.soc_cible_kwh,
+                soe_cible_kwh=p.soe_cible_kwh,
             )
             for p in pas_reponse
         ],

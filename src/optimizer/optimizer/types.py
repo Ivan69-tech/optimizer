@@ -29,7 +29,7 @@ class SolverInput:
     """
 
     site: SiteParams
-    soc_initial_kwh: float
+    soe_initial_kwh: float
     timestamps: list[datetime]
     conso_kw: list[float]
     pv_kw: list[float]
@@ -44,7 +44,7 @@ class PasSolveur:
 
     timestamp: datetime
     energie_kwh: float  # convention producteur : positif = décharge
-    soc_cible_kwh: float
+    soe_cible_kwh: float
 
 
 @dataclass(frozen=True)

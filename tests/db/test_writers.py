@@ -14,7 +14,7 @@ def test_save_trajectoire_persiste_pas_avec_cascade(db_session, sample_site):
         writers.PasTrajectoireNouveau(
             timestamp=datetime(2026, 4, 18, 10, tzinfo=UTC) + timedelta(minutes=15 * i),
             energie_kwh=float(i),
-            soc_cible_kwh=100.0 + i,
+            soe_cible_kwh=100.0 + i,
         )
         for i in range(4)
     ]
@@ -22,7 +22,7 @@ def test_save_trajectoire_persiste_pas_avec_cascade(db_session, sample_site):
         db_session,
         site_id=sample_site.site_id,
         timestamp_calcul=datetime(2026, 4, 18, 10, 0, 5, tzinfo=UTC),
-        soc_initial_kwh=100.0,
+        soe_initial_kwh=100.0,
         statut="ok",
         message=None,
         derive_pct=None,
@@ -33,7 +33,7 @@ def test_save_trajectoire_persiste_pas_avec_cascade(db_session, sample_site):
     assert traj.id is not None
     relus = readers.get_pas_trajectoire(db_session, traj.id)
     assert len(relus) == 4
-    assert [p.soc_cible_kwh for p in relus] == [100.0, 101.0, 102.0, 103.0]
+    assert [p.soe_cible_kwh for p in relus] == [100.0, 101.0, 102.0, 103.0]
 
 
 def test_derniere_trajectoire_renvoie_la_plus_recente(db_session, sample_site):
@@ -42,7 +42,7 @@ def test_derniere_trajectoire_renvoie_la_plus_recente(db_session, sample_site):
             db_session,
             site_id=sample_site.site_id,
             timestamp_calcul=datetime(2026, 4, 18, heure, tzinfo=UTC),
-            soc_initial_kwh=100.0,
+            soe_initial_kwh=100.0,
             statut="ok",
             message=None,
             derive_pct=None,

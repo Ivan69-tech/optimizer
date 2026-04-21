@@ -118,13 +118,13 @@ Puissance nette BESS en convention producteur :
 P_bess(t) = (e_decharge(t) - e_charge(t)) / 0.25   # positif = décharge (production)
 ```
 
-### Dynamique du SoC
+### Dynamique du SoE
 
 Rendement symétrique `η` par site (ex. 0.95) :
 
 ```
-SoC(0)   = soc_actuel_kwh                              # condition initiale (reçue en POST)
-SoC(t+1) = SoC(t) + e_charge(t) × η - e_decharge(t) / η
+SoE(0)   = soe_actuel_kwh                              # condition initiale (reçue en POST)
+SoE(t+1) = SoE(t) + e_charge(t) × η - e_decharge(t) / η
 ```
 
 ### Bilan de puissance au PDL — convention producteur
@@ -157,8 +157,8 @@ minimiser  Σ_{t=0}^{191}  (-P_pdl(t)) × prix_spot(t) × 0.25
 ### Contraintes
 
 ```
-# 1. Bornes SoC — limites physiques de la batterie
-0  ≤  SoC(t)  ≤  capacite_bess_kwh                                 ∀ t
+# 1. Bornes SoE — limites physiques de la batterie
+0  ≤  SoE(t)  ≤  capacite_bess_kwh                                 ∀ t
 
 # 2. Puissance max BESS (charge et décharge séparées)
 e_charge(t)   / 0.25  ≤  p_max_bess_kw                            ∀ t
@@ -223,7 +223,7 @@ CREATE TABLE trajectoires_optimisees (
     id                  SERIAL PRIMARY KEY,
     site_id             VARCHAR(64) NOT NULL REFERENCES sites(site_id),
     timestamp_calcul    TIMESTAMPTZ NOT NULL,
-    soc_initial_kwh     FLOAT NOT NULL,
+    soe_initial_kwh     FLOAT NOT NULL,
     statut              VARCHAR(16) NOT NULL,  -- 'ok' | 'corrective' | 'degraded' | 'error'
     message             TEXT,
     derive_pct          FLOAT,                 -- null si première trajectoire
@@ -237,7 +237,7 @@ CREATE TABLE trajectoire_pas (
     trajectoire_id      INTEGER NOT NULL REFERENCES trajectoires_optimisees(id) ON DELETE CASCADE,
     timestamp           TIMESTAMPTZ NOT NULL,
     energie_kwh         FLOAT NOT NULL,       -- positif = décharge (convention producteur)
-    soc_cible_kwh       FLOAT NOT NULL
+    soe_cible_kwh       FLOAT NOT NULL
 );
 ```
 
@@ -252,7 +252,7 @@ CREATE TABLE trajectoire_pas (
 ```json
 {
   "site_id": "string",
-  "soc_actuel_kwh": 150.0,
+  "soe_actuel_kwh": 150.0,
   "capacite_bess_kwh": 200.0
 }
 ```
@@ -268,7 +268,7 @@ CREATE TABLE trajectoire_pas (
     {
       "timestamp": "2026-04-18T10:00:00+02:00",
       "energie_kwh": 12.5,
-      "soc_cible_kwh": 137.5
+      "soe_cible_kwh": 137.5
     }
     // ... 95 autres entrées (total 96 = 24h)
   ],
@@ -341,7 +341,7 @@ Mêmes règles que le Service de Prévision :
 - Code simple et explicite. Un développeur junior doit comprendre chaque fonction sans
   contexte supplémentaire.
 - Une fonction = une responsabilité.
-- Français pour les noms de variables métier (`soc_kwh`, `puissance_kw`, `site_id`).
+- Français pour les noms de variables métier (`soe_kwh`, `puissance_kw`, `site_id`).
   Anglais pour la structure technique (classes, exceptions, méthodes).
 - Type hints obligatoires sur toutes les fonctions publiques.
 - Dataclasses ou Pydantic pour tous les objets échangés entre modules.

@@ -24,7 +24,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("site_id", sa.String(64), nullable=False),
         sa.Column("timestamp_calcul", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("soc_initial_kwh", sa.Float(), nullable=False),
+        sa.Column("soe_initial_kwh", sa.Float(), nullable=False),
         sa.Column("statut", sa.String(16), nullable=False),
         sa.Column("message", sa.Text(), nullable=True),
         sa.Column("derive_pct", sa.Float(), nullable=True),
@@ -46,7 +46,7 @@ def upgrade() -> None:
         sa.Column("trajectoire_id", sa.Integer(), nullable=False),
         sa.Column("timestamp", sa.DateTime(timezone=True), nullable=False),
         sa.Column("energie_kwh", sa.Float(), nullable=False),
-        sa.Column("soc_cible_kwh", sa.Float(), nullable=False),
+        sa.Column("soe_cible_kwh", sa.Float(), nullable=False),
         sa.ForeignKeyConstraint(
             ["trajectoire_id"], ["trajectoires_optimisees.id"], ondelete="CASCADE"
         ),

@@ -41,8 +41,8 @@ def solve(entree: SolverInput) -> SolverOutput:
     pv = np.asarray(entree.pv_kw, dtype=float)
     prix_eur_kwh = np.asarray(entree.prix_eur_mwh, dtype=float) / 1000.0
 
-    soc_min = 0.0
-    soc_max = site.capacite_bess_kwh
+    soe_min = 0.0
+    soe_max = site.capacite_bess_kwh
     e_bess_max = site.p_max_bess_kw * pas_h  # kWh max par pas
 
     e_charge = cp.Variable(n, nonneg=True)
@@ -54,19 +54,19 @@ def solve(entree: SolverInput) -> SolverOutput:
     # Bilan PDL en convention producteur : P_pdl = P_pv + P_bess - P_conso.
     p_pdl = pv + p_bess - conso
 
-    # Dynamique SoC : SoC(t+1) = SoC(t) + e_charge * eta - e_decharge / eta.
-    # Pour éviter une variable SoC supplémentaire, on exprime SoC(t) comme
-    # SoC(0) + cumsum(e_charge * eta - e_decharge / eta) et on contraint
+    # Dynamique SoE : SoE(t+1) = SoE(t) + e_charge * eta - e_decharge / eta.
+    # Pour éviter une variable SoE supplémentaire, on exprime SoE(t) comme
+    # SoE(0) + cumsum(e_charge * eta - e_decharge / eta) et on contraint
     # les bornes directement.
-    delta_soc = e_charge * eta - e_decharge / eta
-    # soc_apres_pas[t] = SoC après application du pas t  (kWh), t = 0..n-1
-    # soc_initial est la valeur de SoC(0) avant tout pas.
-    soc_apres_pas = entree.soc_initial_kwh + cp.cumsum(delta_soc)
+    delta_soe = e_charge * eta - e_decharge / eta
+    # soe_apres_pas[t] = SoE après application du pas t  (kWh), t = 0..n-1
+    # soe_initial est la valeur de SoE(0) avant tout pas.
+    soe_apres_pas = entree.soe_initial_kwh + cp.cumsum(delta_soe)
 
     contraintes = [
-        # Bornes SoC sur tous les états intermédiaires et final.
-        soc_apres_pas >= soc_min,
-        soc_apres_pas <= soc_max,
+        # Bornes SoE sur tous les états intermédiaires et final.
+        soe_apres_pas >= soe_min,
+        soe_apres_pas <= soe_max,
         # Puissance BESS max (charge et décharge séparément).
         e_charge <= e_bess_max,
         e_decharge <= e_bess_max,
@@ -85,7 +85,7 @@ def solve(entree: SolverInput) -> SolverOutput:
     objectif = cp.Minimize(cout_reseau + penalite)
 
     probleme = cp.Problem(objectif, contraintes)
-    logger.info("solve START | n_steps=%d | soc_init=%.1f kWh", n, entree.soc_initial_kwh)
+    logger.info("solve START | n_steps=%d | soe_init=%.1f kWh", n, entree.soe_initial_kwh)
     t_solve = time.perf_counter()
     probleme.solve(solver=cp.HIGHS)
     solve_ms = (time.perf_counter() - t_solve) * 1000
@@ -103,13 +103,13 @@ def solve(entree: SolverInput) -> SolverOutput:
 
     energie_kwh = e_d - e_c  # convention producteur
     delta = e_c * eta - e_d / eta
-    soc_values = entree.soc_initial_kwh + np.cumsum(delta)
+    soe_values = entree.soe_initial_kwh + np.cumsum(delta)
 
     pas_resultat = [
         PasSolveur(
             timestamp=ts,
             energie_kwh=float(energie_kwh[i]),
-            soc_cible_kwh=float(soc_values[i]),
+            soe_cible_kwh=float(soe_values[i]),
         )
         for i, ts in enumerate(entree.timestamps)
     ]

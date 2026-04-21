@@ -23,14 +23,14 @@ class PasTrajectoireNouveau:
 
     timestamp: datetime
     energie_kwh: float
-    soc_cible_kwh: float
+    soe_cible_kwh: float
 
 
 def save_trajectoire(
     session: Session,
     site_id: str,
     timestamp_calcul: datetime,
-    soc_initial_kwh: float,
+    soe_initial_kwh: float,
     statut: str,
     message: str | None,
     derive_pct: float | None,
@@ -48,7 +48,7 @@ def save_trajectoire(
     trajectoire = Trajectoire(
         site_id=site_id,
         timestamp_calcul=timestamp_calcul,
-        soc_initial_kwh=soc_initial_kwh,
+        soe_initial_kwh=soe_initial_kwh,
         statut=statut,
         message=message,
         derive_pct=derive_pct,
@@ -58,7 +58,7 @@ def save_trajectoire(
             TrajectoirePas(
                 timestamp=p.timestamp,
                 energie_kwh=p.energie_kwh,
-                soc_cible_kwh=p.soc_cible_kwh,
+                soe_cible_kwh=p.soe_cible_kwh,
             )
             for p in pas
         ],

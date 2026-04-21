@@ -66,7 +66,7 @@ def test_site_inconnu(db_session, cfg_test):
         run_optimization(
             db_session,
             site_id="inconnu",
-            soc_actuel_kwh=100.0,
+            soe_actuel_kwh=100.0,
             cfg=cfg_test,
         )
 
@@ -78,7 +78,7 @@ def test_pipeline_happy_path(db_session, sample_site, cfg_test):
     resultat = run_optimization(
         db_session,
         site_id=sample_site.site_id,
-        soc_actuel_kwh=100.0,
+        soe_actuel_kwh=100.0,
         cfg=cfg_test,
     )
     assert resultat.statut == STATUT_OK
@@ -91,7 +91,7 @@ def test_pipeline_leve_si_forecasts_majoritairement_manquants(db_session, sample
         run_optimization(
             db_session,
             site_id=sample_site.site_id,
-            soc_actuel_kwh=100.0,
+            soe_actuel_kwh=100.0,
             cfg=cfg_test,
         )
 
@@ -105,7 +105,7 @@ def test_pipeline_statut_corrective_si_derive_elevee(db_session, sample_site, cf
     run_optimization(
         db_session,
         site_id=sample_site.site_id,
-        soc_actuel_kwh=100.0,
+        soe_actuel_kwh=100.0,
         cfg=cfg_test,
     )
 
@@ -113,7 +113,7 @@ def test_pipeline_statut_corrective_si_derive_elevee(db_session, sample_site, cf
     resultat = run_optimization(
         db_session,
         site_id=sample_site.site_id,
-        soc_actuel_kwh=20.0,  # capacité 200 → dérive potentielle importante
+        soe_actuel_kwh=20.0,  # capacité 200 → dérive potentielle importante
         cfg=cfg_test,
     )
     # Le statut est corrective si la dérive dépasse le seuil (10 %).

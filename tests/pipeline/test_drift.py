@@ -14,7 +14,7 @@ def test_derive_sans_trajectoire_precedente_retourne_none(db_session, sample_sit
     derive = calcul_derive_pct(
         db_session,
         trajectoire_precedente=None,
-        soc_actuel_kwh=100.0,
+        soe_actuel_kwh=100.0,
         timestamp_requete=datetime(2026, 4, 18, 10, tzinfo=UTC),
         capacite_bess_kwh=sample_site.capacite_bess_kwh,
     )
@@ -26,7 +26,7 @@ def test_derive_avec_trajectoire_mais_sans_pas_pertinent(db_session, sample_site
     traj = Trajectoire(
         site_id=sample_site.site_id,
         timestamp_calcul=datetime(2026, 4, 18, 9, tzinfo=UTC),
-        soc_initial_kwh=100.0,
+        soe_initial_kwh=100.0,
         statut="ok",
         message=None,
         derive_pct=None,
@@ -36,7 +36,7 @@ def test_derive_avec_trajectoire_mais_sans_pas_pertinent(db_session, sample_site
             TrajectoirePas(
                 timestamp=datetime(2026, 4, 18, 10, 0, tzinfo=UTC),
                 energie_kwh=0.0,
-                soc_cible_kwh=100.0,
+                soe_cible_kwh=100.0,
             )
         ],
     )
@@ -46,7 +46,7 @@ def test_derive_avec_trajectoire_mais_sans_pas_pertinent(db_session, sample_site
     derive = calcul_derive_pct(
         db_session,
         trajectoire_precedente=traj,
-        soc_actuel_kwh=100.0,
+        soe_actuel_kwh=100.0,
         timestamp_requete=datetime(2026, 4, 18, 9, 30, tzinfo=UTC),
         capacite_bess_kwh=sample_site.capacite_bess_kwh,
     )
@@ -58,7 +58,7 @@ def test_derive_calculee_correctement(db_session, sample_site):
     traj = Trajectoire(
         site_id=sample_site.site_id,
         timestamp_calcul=datetime(2026, 4, 18, 9, tzinfo=UTC),
-        soc_initial_kwh=100.0,
+        soe_initial_kwh=100.0,
         statut="ok",
         message=None,
         derive_pct=None,
@@ -68,7 +68,7 @@ def test_derive_calculee_correctement(db_session, sample_site):
             TrajectoirePas(
                 timestamp=datetime(2026, 4, 18, 9, 0, tzinfo=UTC) + timedelta(minutes=15 * i),
                 energie_kwh=0.0,
-                soc_cible_kwh=100.0,
+                soe_cible_kwh=100.0,
             )
             for i in range(4)
         ],
@@ -79,7 +79,7 @@ def test_derive_calculee_correctement(db_session, sample_site):
     derive = calcul_derive_pct(
         db_session,
         trajectoire_precedente=traj,
-        soc_actuel_kwh=80.0,
+        soe_actuel_kwh=80.0,
         timestamp_requete=datetime(2026, 4, 18, 9, 30, tzinfo=UTC),
         capacite_bess_kwh=sample_site.capacite_bess_kwh,
     )

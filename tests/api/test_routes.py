@@ -37,13 +37,13 @@ def client(db_session, cfg_test):
 def _payload(site_id: str = "site-test-01"):
     return {
         "site_id": site_id,
-        "soc_actuel_kwh": 100.0,
+        "soe_actuel_kwh": 100.0,
         "capacite_bess_kwh": 200.0,
     }
 
 
 def test_post_optimize_422_si_payload_invalide(client):
-    mauvais = {"site_id": "x", "soc_actuel_kwh": -1.0}  # soc_actuel négatif
+    mauvais = {"site_id": "x", "soe_actuel_kwh": -1.0}  # soe_actuel négatif
     response = client.post("/api/v1/optimize", json=mauvais)
     assert response.status_code == 422
 
@@ -72,7 +72,7 @@ def test_post_optimize_happy_path(client, monkeypatch):
         PasSolveur(
             timestamp=debut + timedelta(minutes=15 * i),
             energie_kwh=float(i),
-            soc_cible_kwh=100.0 + i,
+            soe_cible_kwh=100.0 + i,
         )
         for i in range(96)
     ]

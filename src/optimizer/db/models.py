@@ -96,7 +96,7 @@ class Trajectoire(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     site_id: Mapped[str] = mapped_column(String(64), ForeignKey("sites.site_id"), nullable=False)
     timestamp_calcul: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    soc_initial_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    soe_initial_kwh: Mapped[float] = mapped_column(Float, nullable=False)
     statut: Mapped[str] = mapped_column(String(16), nullable=False)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     derive_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -119,6 +119,6 @@ class TrajectoirePas(Base):
     )
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     energie_kwh: Mapped[float] = mapped_column(Float, nullable=False)
-    soc_cible_kwh: Mapped[float] = mapped_column(Float, nullable=False)
+    soe_cible_kwh: Mapped[float] = mapped_column(Float, nullable=False)
 
     trajectoire: Mapped["Trajectoire"] = relationship(back_populates="pas")

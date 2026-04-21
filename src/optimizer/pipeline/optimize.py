@@ -77,7 +77,7 @@ def _choisir_statut(
     if derive_pct is not None and derive_pct > cfg.seuil_derive_pct:
         return (
             STATUT_CORRECTIVE,
-            f"Dérive SoC {derive_pct:.1f}% > seuil {cfg.seuil_derive_pct}%.",
+            f"Dérive SoE {derive_pct:.1f}% > seuil {cfg.seuil_derive_pct}%.",
         )
     return STATUT_OK, ""
 
@@ -85,7 +85,7 @@ def _choisir_statut(
 def run_optimization(
     session: Session,
     site_id: str,
-    soc_actuel_kwh: float,
+    soe_actuel_kwh: float,
     cfg: ConfigYaml,
 ) -> ResultatOptimisation:
     """
@@ -102,7 +102,7 @@ def run_optimization(
     """
     t0 = time.perf_counter()
     now = datetime.now(tz=UTC)
-    logger.info("run_optimization START | site=%s | soc=%.1f kWh", site_id, soc_actuel_kwh)
+    logger.info("run_optimization START | site=%s | soe=%.1f kWh", site_id, soe_actuel_kwh)
 
     site = readers.get_site(session, site_id)
     if site is None:
@@ -134,26 +134,27 @@ def run_optimization(
     logger.info(
         "forecasts chargés | site=%s | conso=%d/%d | pv=%d/%d | prix=%d/%d",
         site_id,
-        nb_conso_ok, len(conso),
-        nb_pv_ok, len(pv),
-        nb_prix_ok, len(prix),
+        nb_conso_ok,
+        len(conso),
+        nb_pv_ok,
+        len(pv),
+        nb_prix_ok,
+        len(prix),
     )
 
     capacite_bess = float(site.capacite_bess_kwh)
     derniere = readers.get_derniere_trajectoire(session, site_id)
-    derive_pct = calcul_derive_pct(
-        session, derniere, soc_actuel_kwh, now, capacite_bess
-    )
+    derive_pct = calcul_derive_pct(session, derniere, soe_actuel_kwh, now, capacite_bess)
 
     capacite = float(site.capacite_bess_kwh)
-    if not (-1e-6 <= soc_actuel_kwh <= capacite + 1e-6):
+    if not (-1e-6 <= soe_actuel_kwh <= capacite + 1e-6):
         raise ValueError(
-            f"soc_actuel={soc_actuel_kwh:.1f} kWh hors bornes [0, {capacite:.1f}] kWh."
+            f"soe_actuel={soe_actuel_kwh:.1f} kWh hors bornes [0, {capacite:.1f}] kWh."
         )
 
     entree = SolverInput(
         site=_to_site_params(site),
-        soc_initial_kwh=soc_actuel_kwh,
+        soe_initial_kwh=soe_actuel_kwh,
         timestamps=timestamps,
         conso_kw=[p.valeur for p in conso],
         pv_kw=[p.valeur for p in pv],
@@ -169,7 +170,7 @@ def run_optimization(
         session,
         site_id=site_id,
         timestamp_calcul=timestamp_calcul,
-        soc_initial_kwh=soc_actuel_kwh,
+        soe_initial_kwh=soe_actuel_kwh,
         statut=statut,
         message=message or None,
         derive_pct=derive_pct,
@@ -179,7 +180,7 @@ def run_optimization(
             writers.PasTrajectoireNouveau(
                 timestamp=p.timestamp,
                 energie_kwh=p.energie_kwh,
-                soc_cible_kwh=p.soc_cible_kwh,
+                soe_cible_kwh=p.soe_cible_kwh,
             )
             for p in sortie.pas
         ],

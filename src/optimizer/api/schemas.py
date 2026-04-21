@@ -13,7 +13,7 @@ class OptimizeRequest(BaseModel):
     """Payload du POST /api/v1/optimize."""
 
     site_id: str = Field(..., min_length=1, max_length=64)
-    soc_actuel_kwh: float = Field(..., ge=0)
+    soe_actuel_kwh: float = Field(..., ge=0)
     capacite_bess_kwh: float = Field(..., gt=0)
 
 
@@ -22,7 +22,7 @@ class TrajectoryStep(BaseModel):
 
     timestamp: datetime
     energie_kwh: float  # convention producteur : positif = décharge
-    soc_cible_kwh: float
+    soe_cible_kwh: float
 
 
 class OptimizeResponse(BaseModel):
