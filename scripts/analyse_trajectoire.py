@@ -79,9 +79,14 @@ def charger_config(path: str | Path) -> AnalyseConfig:
         sys.exit(f"Erreur de parsing YAML : {exc}")
 
     champs_requis = [
-        "site_id", "soe_actuel_kwh", "capacite_bess_kwh",
-        "optimizer_url", "database_url",
-        "prix_spot_defaut_eur_mwh", "output_html", "ouvrir_navigateur",
+        "site_id",
+        "soe_actuel_kwh",
+        "capacite_bess_kwh",
+        "optimizer_url",
+        "database_url",
+        "prix_spot_defaut_eur_mwh",
+        "output_html",
+        "ouvrir_navigateur",
     ]
     for champ in champs_requis:
         if champ not in raw:
@@ -272,12 +277,12 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
         rows=4,
         cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.05,
+        vertical_spacing=0.08,
         subplot_titles=(
             "Bilan BESS + PDL",
+            "Prix spot (EUR/MWh)",
             "Consommation (kW)",
             "Production PV (kW)",
-            "Prix spot (EUR/MWh)",
         ),
         specs=[
             [{"secondary_y": True}],
@@ -297,10 +302,12 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
             name="P_bess (kW)",
             fill="tozeroy",
             mode="lines",
-            line={"color": "steelblue", "width": 1.5},
+            line={"color": "steelblue", "width": 1.5, "shape": "hv"},
             fillcolor="rgba(70,130,180,0.25)",
         ),
-        row=1, col=1, secondary_y=False,
+        row=1,
+        col=1,
+        secondary_y=False,
     )
     fig.add_trace(
         go.Scatter(
@@ -308,50 +315,29 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
             y=df["p_pdl_avec_bess_kw"],
             name="P_pdl avec BESS (kW)",
             mode="lines",
-            line={"color": "darkorange", "width": 2},
+            line={"color": "darkorange", "width": 2, "shape": "hv"},
         ),
-        row=1, col=1, secondary_y=False,
+        row=1,
+        col=1,
+        secondary_y=False,
     )
+    # soe_cible_kwh est l'état à la FIN de l'intervalle t (= début de t+1)
+    # on décale de +15 min pour l'aligner avec la puissance qui cause ce changement
+    x_soe = x + pd.Timedelta(minutes=15)
     fig.add_trace(
         go.Scatter(
-            x=x,
+            x=x_soe,
             y=df["soe_pct"],
             name="SoE (%)",
             mode="lines",
             line={"color": "green", "width": 1.5, "dash": "dot"},
         ),
-        row=1, col=1, secondary_y=True,
+        row=1,
+        col=1,
+        secondary_y=True,
     )
 
-    # --- Ligne 2 : Consommation ---
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=df["conso_kw"],
-            name="Consommation (kW)",
-            fill="tozeroy",
-            mode="lines",
-            line={"color": "crimson", "width": 1.5},
-            fillcolor="rgba(220,20,60,0.2)",
-        ),
-        row=2, col=1,
-    )
-
-    # --- Ligne 3 : Production PV ---
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=df["pv_kw"],
-            name="Production PV (kW)",
-            fill="tozeroy",
-            mode="lines",
-            line={"color": "goldenrod", "width": 1.5},
-            fillcolor="rgba(218,165,32,0.25)",
-        ),
-        row=3, col=1,
-    )
-
-    # --- Ligne 4 : Prix spot (réels et fallback) ---
+    # --- Ligne 2 : Prix spot (réels et fallback) ---
     mask_ok = ~df["prix_fallback"]
     mask_fb = df["prix_fallback"]
 
@@ -362,10 +348,11 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
                 y=df.loc[mask_ok, "prix_eur_mwh"],
                 name="Prix spot (EUR/MWh)",
                 mode="lines+markers",
-                line={"color": "slategray", "width": 1.5},
+                line={"color": "slategray", "width": 1.5, "shape": "hv"},
                 marker={"size": 4, "color": "slategray"},
             ),
-            row=4, col=1,
+            row=2,
+            col=1,
         )
     if mask_fb.any():
         fig.add_trace(
@@ -376,20 +363,64 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
                 mode="markers",
                 marker={"size": 8, "color": "orange", "symbol": "x"},
             ),
-            row=4, col=1,
+            row=2,
+            col=1,
         )
 
-    # Axes
+    # --- Ligne 3 : Consommation ---
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=df["conso_kw"],
+            name="Consommation (kW)",
+            fill="tozeroy",
+            mode="lines",
+            line={"color": "crimson", "width": 1.5},
+            fillcolor="rgba(220,20,60,0.2)",
+        ),
+        row=3,
+        col=1,
+    )
+
+    # --- Ligne 4 : Production PV ---
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=df["pv_kw"],
+            name="Production PV (kW)",
+            fill="tozeroy",
+            mode="lines",
+            line={"color": "goldenrod", "width": 1.5},
+            fillcolor="rgba(218,165,32,0.25)",
+        ),
+        row=4,
+        col=1,
+    )
+
+    # Axes Y
     fig.update_yaxes(title_text="Puissance (kW)", secondary_y=False, row=1, col=1)
     fig.update_yaxes(title_text="SoE (%)", secondary_y=True, row=1, col=1, range=[0, 110])
-    fig.update_yaxes(title_text="kW", row=2, col=1)
+    fig.update_yaxes(title_text="EUR/MWh", row=2, col=1)
     fig.update_yaxes(title_text="kW", row=3, col=1)
-    fig.update_yaxes(title_text="EUR/MWh", row=4, col=1)
+    fig.update_yaxes(title_text="kW", row=4, col=1)
+
+    # Date + heure sur l'axe X de chaque sous-graphe
+    fig.update_xaxes(
+        showticklabels=True,
+        tickformat="%H:%M\n%d/%m",
+        showspikes=True,
+        spikemode="across",
+        spikesnap="cursor",
+        spikecolor="#888",
+        spikedash="dot",
+        spikethickness=1,
+    )
 
     fig.update_layout(
-        height=950,
+        height=1200,
         title_text=f"Analyse trajectoire BESS — {cfg.site_id}",
         hovermode="x unified",
+        hoversubplots="axis",  # hover commun à tous les sous-graphes (Plotly >= 5.17)
         legend={"orientation": "h", "y": -0.06, "x": 0},
         margin={"t": 80, "b": 80},
     )
@@ -406,9 +437,11 @@ def construire_tableau_metriques_html(
     timestamp_calcul = reponse.get("timestamp_calcul", "")
     horizon_debut = reponse.get("horizon_debut", "")
 
-    badge_class = {"ok": "badge-ok", "corrective": "badge-corrective", "degraded": "badge-degraded"}.get(
-        statut, "badge-ok"
-    )
+    badge_class = {
+        "ok": "badge-ok",
+        "corrective": "badge-corrective",
+        "degraded": "badge-degraded",
+    }.get(statut, "badge-ok")
 
     gain_color = "#27ae60" if m.gain_eur >= 0 else "#e74c3c"
 
@@ -428,7 +461,7 @@ def construire_tableau_metriques_html(
     Calcul&nbsp;: {timestamp_calcul} &nbsp;|&nbsp;
     Horizon&nbsp;: {horizon_debut} &nbsp;|&nbsp;
     Statut&nbsp;: <span class="{badge_class}">{statut.upper()}</span>
-    {f'&nbsp;— {message}' if message else ''}
+    {f"&nbsp;— {message}" if message else ""}
   </p>
 
   <table class="metriques-table" style="margin-bottom:1rem;">
@@ -452,7 +485,7 @@ def construire_tableau_metriques_html(
         <td>Coût net</td>
         <td>{eur(m.cout_net_sans_bess)}</td>
         <td>{eur(m.cout_net_avec_bess)}</td>
-        <td style="color:{gain_color};">{"+" if m.gain_eur >= 0 else ""}{eur(m.gain_eur)} ({'économie' if m.gain_eur >= 0 else 'surcoût'})</td>
+        <td style="color:{gain_color};">{"+" if m.gain_eur >= 0 else ""}{eur(m.gain_eur)} ({"économie" if m.gain_eur >= 0 else "surcoût"})</td>
       </tr>
     </tbody>
   </table>
