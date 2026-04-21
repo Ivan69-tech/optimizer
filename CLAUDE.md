@@ -68,7 +68,7 @@ pipeline/optimize.py   ←── orchestration : lit DB, détecte dérive, lance
 
 | Couche | Modules | Rôle |
 |--------|---------|------|
-| **API** | `api/routes.py`, `api/schemas.py` | FastAPI — validation entrée/sortie, auth Bearer token |
+| **API** | `api/routes.py`, `api/schemas.py` | FastAPI — validation entrée/sortie |
 | **Pipeline** | `pipeline/optimize.py` | Orchestration : lit DB → détecte dérive → résout → écrit |
 | **Solveur** | `optimizer/solver.py` | Formulation LP et résolution (CVXPY + HiGHS) |
 | **DB** | `db/readers.py`, `db/writers.py`, `db/session.py` | Accès PostgreSQL — lecture seule sauf `trajectoires_optimisees` |
@@ -303,19 +303,10 @@ Retourne la dérive courante et la date du dernier calcul.
 
 ---
 
-## Authentification
-
-Header `Authorization: Bearer <api_key>`. Une clé API par site.
-Variable d'environnement `SITE_API_KEYS` = JSON map `{"site_abc": "key_xxx"}`.
-Retourner `403` si la clé ne correspond pas au `site_id` de la requête.
-
----
-
 ## Variables d'environnement requises
 
 ```
 DATABASE_URL       # postgresql://user:password@host:5432/dbname
-SITE_API_KEYS      # {"site_abc": "key_xxx", "site_def": "key_yyy"}
 LOG_LEVEL          # INFO (défaut)
 ```
 
