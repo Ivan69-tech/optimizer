@@ -45,7 +45,6 @@ class AnalyseConfig:
     capacite_bess_kwh: float
     optimizer_url: str
     database_url: str
-    prix_spot_defaut_eur_mwh: float
     output_html: str
     ouvrir_navigateur: bool
 
@@ -84,7 +83,6 @@ def charger_config(path: str | Path) -> AnalyseConfig:
         "capacite_bess_kwh",
         "optimizer_url",
         "database_url",
-        "prix_spot_defaut_eur_mwh",
         "output_html",
         "ouvrir_navigateur",
     ]
@@ -98,7 +96,6 @@ def charger_config(path: str | Path) -> AnalyseConfig:
         capacite_bess_kwh=float(raw["capacite_bess_kwh"]),
         optimizer_url=str(raw["optimizer_url"]).rstrip("/"),
         database_url=str(raw["database_url"]),
-        prix_spot_defaut_eur_mwh=float(raw["prix_spot_defaut_eur_mwh"]),
         output_html=str(raw["output_html"]),
         ouvrir_navigateur=bool(raw["ouvrir_navigateur"]),
     )
@@ -273,27 +270,22 @@ def calculer_metriques(df: pd.DataFrame) -> MetriquesCalculees:
 
 def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
     fig = make_subplots(
-        rows=4,
+        rows=5,
         cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.08,
+        vertical_spacing=0.06,
         subplot_titles=(
             "Bilan BESS + PDL",
+            "SoE (%)",
             "Prix spot (EUR/MWh)",
             "Consommation (kW)",
             "Production PV (kW)",
         ),
-        specs=[
-            [{"secondary_y": True}],
-            [{"secondary_y": False}],
-            [{"secondary_y": False}],
-            [{"secondary_y": False}],
-        ],
     )
 
     x = df.index
 
-    # --- Ligne 1 : P_bess, P_pdl, SoE ---
+    # --- Row 1 : P_bess, P_pdl ---
     fig.add_trace(
         go.Scatter(
             x=x,
@@ -306,7 +298,6 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
         ),
         row=1,
         col=1,
-        secondary_y=False,
     )
     fig.add_trace(
         go.Scatter(
@@ -318,8 +309,9 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
         ),
         row=1,
         col=1,
-        secondary_y=False,
     )
+
+    # --- Row 2 : SoE ---
     # soe_cible_kwh est l'état à la FIN de l'intervalle t (= début de t+1)
     # on décale de +15 min pour l'aligner avec la puissance qui cause ce changement
     x_soe = x + pd.Timedelta(minutes=15)
@@ -329,44 +321,39 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
             y=df["soe_pct"],
             name="SoE (%)",
             mode="lines",
-            line={"color": "green", "width": 1.5, "dash": "dot"},
+            line={"color": "green", "width": 2},
         ),
-        row=1,
+        row=2,
         col=1,
-        secondary_y=True,
     )
 
-    # --- Ligne 2 : Prix spot (réels et fallback) ---
-    mask_ok = ~df["prix_fallback"]
+    # --- Row 3 : Prix spot — ligne grise complète, rouge par-dessus les fallbacks ---
     mask_fb = df["prix_fallback"]
-
-    if mask_ok.any():
-        fig.add_trace(
-            go.Scatter(
-                x=x[mask_ok],
-                y=df.loc[mask_ok, "prix_eur_mwh"],
-                name="Prix spot (EUR/MWh)",
-                mode="lines+markers",
-                line={"color": "slategray", "width": 1.5, "shape": "hv"},
-                marker={"size": 4, "color": "slategray"},
-            ),
-            row=2,
-            col=1,
-        )
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=df["prix_eur_mwh"],
+            name="Prix spot (EUR/MWh)",
+            mode="lines",
+            line={"color": "slategray", "width": 1.5, "shape": "hv"},
+        ),
+        row=3,
+        col=1,
+    )
     if mask_fb.any():
         fig.add_trace(
             go.Scatter(
                 x=x[mask_fb],
                 y=df.loc[mask_fb, "prix_eur_mwh"],
-                name="Prix fallback",
-                mode="markers",
-                marker={"size": 8, "color": "orange", "symbol": "x"},
+                name="Prix fallback (J-1)",
+                mode="lines",
+                line={"color": "red", "width": 1.5, "shape": "hv"},
             ),
-            row=2,
+            row=3,
             col=1,
         )
 
-    # --- Ligne 3 : Consommation ---
+    # --- Row 4 : Consommation ---
     fig.add_trace(
         go.Scatter(
             x=x,
@@ -377,11 +364,11 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
             line={"color": "crimson", "width": 1.5},
             fillcolor="rgba(220,20,60,0.2)",
         ),
-        row=3,
+        row=4,
         col=1,
     )
 
-    # --- Ligne 4 : Production PV ---
+    # --- Row 5 : Production PV ---
     fig.add_trace(
         go.Scatter(
             x=x,
@@ -392,16 +379,16 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
             line={"color": "goldenrod", "width": 1.5},
             fillcolor="rgba(218,165,32,0.25)",
         ),
-        row=4,
+        row=5,
         col=1,
     )
 
     # Axes Y
-    fig.update_yaxes(title_text="Puissance (kW)", secondary_y=False, row=1, col=1)
-    fig.update_yaxes(title_text="SoE (%)", secondary_y=True, row=1, col=1, range=[0, 110])
-    fig.update_yaxes(title_text="EUR/MWh", row=2, col=1)
-    fig.update_yaxes(title_text="kW", row=3, col=1)
+    fig.update_yaxes(title_text="Puissance (kW)", row=1, col=1)
+    fig.update_yaxes(title_text="SoE (%)", row=2, col=1, range=[0, 110])
+    fig.update_yaxes(title_text="EUR/MWh", row=3, col=1)
     fig.update_yaxes(title_text="kW", row=4, col=1)
+    fig.update_yaxes(title_text="kW", row=5, col=1)
 
     # Date + heure sur l'axe X de chaque sous-graphe
     fig.update_xaxes(
@@ -416,11 +403,11 @@ def construire_figure(df: pd.DataFrame, cfg: AnalyseConfig) -> go.Figure:
     )
 
     fig.update_layout(
-        height=1200,
+        height=1500,
         title_text=f"Analyse trajectoire BESS — {cfg.site_id}",
         hovermode="x unified",
         hoversubplots="axis",  # hover commun à tous les sous-graphes (Plotly >= 5.17)
-        legend={"orientation": "h", "y": -0.06, "x": 0},
+        legend={"orientation": "h", "y": -0.05, "x": 0},
         margin={"t": 80, "b": 80},
     )
     return fig

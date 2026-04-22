@@ -11,7 +11,6 @@ optimizer_url: "http://localhost:8080"
 
 # Connexion à la base de données PostgreSQL (pour récupérer les prévisions)
 database_url: "postgresql://forecaster:forecaster@server-spotapi:5432/forecaster"
-prix_spot_defaut_eur_mwh: 80.0 # Prix fallback si absent en DB (EUR/MWh)
 
 # Sortie
 output_html: "analyse_trajectoire.html"
