@@ -23,6 +23,7 @@ from optimizer.db.session import get_session
 from optimizer.exceptions import (
     ForecastsMissingError,
     InfeasibleProblemError,
+    PrixSpotsIndisponibles,
     SiteNotFoundError,
 )
 from optimizer.pipeline import optimize as pipeline
@@ -61,6 +62,10 @@ def post_optimize(
     except ForecastsMissingError as err:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(err)
+        ) from err
+    except PrixSpotsIndisponibles as err:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="prix spots non dispo"
         ) from err
     except InfeasibleProblemError as err:
         logger.exception("Solveur en échec pour site=%s", request.site_id)

@@ -1,9 +1,6 @@
 # Paramètres fonctionnels du Service d'Optimisation BESS.
 # Les valeurs sensibles (DB, clés API) sont dans .env — jamais ici.
 
-# Prix spot par défaut si tous les fallbacks échouent (EUR/MWh).
-prix_spot_defaut_eur_mwh: 80.0
-
 # Seuil de dérive SoC au-delà duquel une trajectoire est marquée "corrective".
 # Exprimé en pourcentage de la capacité totale de la batterie.
 seuil_derive_pct: 10.0

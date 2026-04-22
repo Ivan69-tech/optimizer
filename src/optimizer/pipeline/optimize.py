@@ -95,7 +95,7 @@ def run_optimization(
     1. Lire `Site` (lève `SiteNotFoundError` si inconnu → 404).
     2. Construire la fenêtre horizon_interne (N pas).
     3. Lire forecasts conso + PV ; lever `ForecastsMissingError` si > 50 % manquants.
-    4. Lire les prix spots (avec fallback J-7 → moyenne 4 sem. → défaut).
+    4. Lire les prix spots (fallback J-1 ; lève `PrixSpotsIndisponibles` si absents).
     5. Calculer la dérive vs la trajectoire précédente.
     6. Résoudre le LP.
     7. Déterminer le statut, écrire en DB, retourner les 96 premiers pas.
@@ -126,7 +126,7 @@ def run_optimization(
             f"Trop de forecasts manquants (conso={manquant_conso:.0%}, pv={manquant_pv:.0%})."
         )
 
-    prix = readers.get_prix_spots(session, site_id, timestamps, cfg.prix_spot_defaut_eur_mwh)
+    prix = readers.get_prix_spots(session, site_id, timestamps)
 
     nb_conso_ok = sum(1 for p in conso if not p.est_fallback)
     nb_pv_ok = sum(1 for p in pv if not p.est_fallback)

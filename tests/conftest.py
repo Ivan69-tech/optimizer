@@ -86,7 +86,6 @@ def sample_site_sans_injection(db_session: Session) -> Site:
 def cfg_test() -> ConfigYaml:
     """Configuration fonctionnelle par défaut pour les tests."""
     return ConfigYaml(
-        prix_spot_defaut_eur_mwh=80.0,
         seuil_derive_pct=10.0,
         slack_penalty_eur_par_kwh=1_000_000.0,
         seuil_slack_kwh=0.1,

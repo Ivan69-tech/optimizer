@@ -182,17 +182,20 @@ P_pdl(t)  ≥  -p_souscrite_kw                                       ∀ t
 
 ## Gestion des prix spots manquants (avant 16h)
 
-Les prix spots J+1 sont publiés par RTE vers 15h30. Avant cette heure, les timestamps
+Les prix spots J+1 sont publiés par RTE vers 16h. Avant cette heure, les timestamps
 de demain ne sont pas encore en base.
 
-**Stratégie de fallback (dans `db/readers.py`, transparent pour le pipeline) :**
+**Stratégie (dans `db/readers.py`) :**
 
-1. Chercher le prix du **même timestamp il y a 7 jours** (même jour de la semaine)
-2. Si absent : utiliser la **moyenne des 4 dernières semaines** sur ce créneau horaire
-3. Si toujours absent : utiliser `prix_spot_defaut_eur_mwh` (configurable dans `config.yaml`, défaut 80.0)
+1. Prix exact en base → utilisé directement.
+2. Prix manquant → chercher le même créneau **J-1, J-2, J-3** (dans cet ordre, premier trouvé).
+3. Aucun prix sur les 3 derniers jours → lève `PrixSpotsIndisponibles` → HTTP 503 `"prix spots non dispo"`.
 
-La fonction `get_prix_spots(site_id, debut, fin)` retourne toujours un array complet de
-192 valeurs avec une colonne `est_fallback: bool` pour chaque pas (utile pour les logs).
+Cas concret : appel à 11h52, fenêtre 48h → timestamps jusqu'au J+2. Les prix J+1 et J+2 ne sont
+pas encore publiés (avant 16h), mais J et J-1 sont en base → fallback J-1 ou J-2 couvre tout.
+
+La fonction `get_prix_spots(site_id, timestamps)` retourne un array complet de 192 valeurs
+avec `est_fallback: bool` pour chaque pas (utile pour les logs), ou lève une exception.
 
 ---
 

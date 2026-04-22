@@ -33,7 +33,6 @@ settings = Settings()
 class ConfigYaml:
     """Paramètres fonctionnels lus depuis config.yaml."""
 
-    prix_spot_defaut_eur_mwh: float
     seuil_derive_pct: float
     slack_penalty_eur_par_kwh: float
     seuil_slack_kwh: float
@@ -63,7 +62,6 @@ def load_config_yaml(path: Path | None = None) -> ConfigYaml:
     with open(chemin, encoding="utf-8") as f:
         data = yaml.safe_load(f)
     return ConfigYaml(
-        prix_spot_defaut_eur_mwh=float(data["prix_spot_defaut_eur_mwh"]),
         seuil_derive_pct=float(data["seuil_derive_pct"]),
         slack_penalty_eur_par_kwh=float(data["slack_penalty_eur_par_kwh"]),
         seuil_slack_kwh=float(data["seuil_slack_kwh"]),

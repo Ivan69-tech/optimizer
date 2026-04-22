@@ -15,3 +15,7 @@ class InfeasibleProblemError(Exception):
     """Levée quand le solveur LP échoue (infaisable même avec slack actif)."""
 
 
+class PrixSpotsIndisponibles(Exception):
+    """Levée quand les prix spots (J et J-1) sont absents en base."""
+
+

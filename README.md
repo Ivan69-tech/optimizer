@@ -34,7 +34,7 @@ api/routes.py          ←── validation Pydantic
        ▼
 pipeline/optimize.py   ←── orchestration : lit DB → dérive → solveur → écrit
        │
-       ├── db/readers.py       ←── forecasts, params site, prix spot (+ fallback J-7)
+       ├── db/readers.py       ←── forecasts, params site, prix spot (+ fallback J-1)
        ├── optimizer/solver.py ←── formulation LP (CVXPY + HiGHS) + résolution
        └── db/writers.py       ←── écriture dans trajectoires_optimisees
 ```
@@ -132,7 +132,6 @@ Les paramètres fonctionnels sont séparés des secrets dans `config.yaml` :
 
 | Paramètre                   | Défaut      | Description                                      |
 | --------------------------- | ----------- | ------------------------------------------------ |
-| `prix_spot_defaut_eur_mwh`  | `80.0`      | Prix fallback si aucun prix disponible           |
 | `seuil_derive_pct`          | `10.0`      | Seuil de dérive SoC (%) pour statut `corrective` |
 | `slack_penalty_eur_par_kwh` | `1 000 000` | Pénalité violation puissance souscrite           |
 | `horizon_interne_h`         | `48`        | Horizon d'optimisation interne                   |
@@ -275,14 +274,14 @@ Dérive SoC courante et date du dernier calcul.
 
 ## Gestion des prix spots manquants
 
-Les prix EPEX J+1 sont publiés par RTE vers 15h30. Avant cette heure, le service
-applique automatiquement une stratégie de fallback dans `db/readers.py` :
+Les prix EPEX J+1 sont publiés par RTE vers 16h. Avant cette heure, la fenêtre de
+48 h contient des créneaux sans prix en base. La stratégie dans `db/readers.py` :
 
-1. Prix du **même créneau il y a 7 jours** (même jour de semaine)
-2. **Moyenne des 4 dernières semaines** sur ce créneau
-3. `prix_spot_defaut_eur_mwh` (valeur dans `config.yaml`)
+1. Prix exact en base → utilisé directement.
+2. Prix manquant → chercher le même créneau **J-1, J-2, J-3** (dans cet ordre, premier trouvé).
+3. Aucun prix sur les 3 derniers jours → lève `PrixSpotsIndisponibles` → HTTP 503 `"prix spots non dispo"`.
 
-Chaque pas de la réponse inclut un flag `est_fallback` (visible dans les logs).
+Chaque pas en fallback est loggué avec `est_fallback=True`.
 
 ---
 

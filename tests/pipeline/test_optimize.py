@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from optimizer.db.models import ConsumptionForecast, PVProductionForecast, SpotPriceForecast
-from optimizer.exceptions import ForecastsMissingError, SiteNotFoundError
+from optimizer.exceptions import ForecastsMissingError, PrixSpotsIndisponibles, SiteNotFoundError
 from optimizer.pipeline.optimize import (
     STATUT_CORRECTIVE,
     STATUT_OK,
@@ -88,6 +88,43 @@ def test_pipeline_happy_path(db_session, sample_site, cfg_test):
 def test_pipeline_leve_si_forecasts_majoritairement_manquants(db_session, sample_site, cfg_test):
     """Aucun forecast en base → > 50 % manquants → 503 côté API."""
     with pytest.raises(ForecastsMissingError):
+        run_optimization(
+            db_session,
+            site_id=sample_site.site_id,
+            soe_actuel_kwh=100.0,
+            cfg=cfg_test,
+        )
+
+
+def test_pipeline_leve_si_prix_spots_indisponibles(db_session, sample_site, cfg_test):
+    """Forecasts présents mais aucun prix en base → PrixSpotsIndisponibles."""
+    debut = _debut_test()
+    gen = datetime.now(UTC)
+    for i in range(N):
+        ts = debut + timedelta(minutes=15 * i)
+        db_session.add(
+            ConsumptionForecast(
+                site_id=sample_site.site_id,
+                timestamp=ts,
+                puissance_kw=30.0,
+                horizon_h=48,
+                date_generation=gen,
+                version_modele="v-test",
+            )
+        )
+        db_session.add(
+            PVProductionForecast(
+                site_id=sample_site.site_id,
+                timestamp=ts,
+                puissance_kw=20.0,
+                horizon_h=48,
+                date_generation=gen,
+                version_modele="v-test",
+            )
+        )
+    db_session.flush()
+
+    with pytest.raises(PrixSpotsIndisponibles):
         run_optimization(
             db_session,
             site_id=sample_site.site_id,

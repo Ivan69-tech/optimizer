@@ -11,7 +11,6 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 # La DB peut stocker les timestamps en tz-naïf (SQLite) ou tz-aware (PostgreSQL).
@@ -24,6 +23,7 @@ from optimizer.db.models import (
     Trajectoire,
     TrajectoirePas,
 )
+from optimizer.exceptions import PrixSpotsIndisponibles
 
 logger = logging.getLogger(__name__)
 
@@ -150,37 +150,18 @@ def _prix_a_timestamp(session: Session, site_id: str, ts: datetime) -> float | N
     return float(row[0]) if row else None
 
 
-def _moyenne_creneau_4_semaines(session: Session, site_id: str, ts: datetime) -> float | None:
-    """
-    Moyenne des prix spots sur le même créneau horaire (HH:MM) lors des
-    4 dernières semaines avant `ts`. Retourne None si aucune donnée.
-    """
-    candidats = [ts - timedelta(weeks=k) for k in range(1, 5)]
-    row = (
-        session.query(func.avg(SpotPriceForecast.prix_eur_mwh))
-        .filter(SpotPriceForecast.site_id == site_id)
-        .filter(SpotPriceForecast.timestamp.in_(candidats))
-        .scalar()
-    )
-    return float(row) if row is not None else None
-
-
 def get_prix_spots(
     session: Session,
     site_id: str,
     timestamps_attendus: list[datetime],
-    prix_defaut_eur_mwh: float,
 ) -> list[PrevisionPoint]:
     """
-    Retourne les prix spots pour chaque timestamp attendu, avec fallback :
+    Retourne les prix spots pour chaque timestamp attendu.
 
-    1. Prix exact pour ce timestamp.
-    2. Prix à timestamp - 7j (même jour de la semaine).
-    3. Moyenne des 4 dernières semaines sur le même créneau horaire.
-    4. Valeur par défaut `prix_defaut_eur_mwh`.
-
-    `est_fallback=True` dès que le prix ne provient pas de la DB pour ce
-    timestamp exact.
+    Stratégie :
+    - Prix exact en base → utilisé directement (est_fallback=False).
+    - Prix manquant → copier le prix de J-1 (même créneau, 24h avant).
+    - J-1 aussi absent → lève PrixSpotsIndisponibles.
     """
     points: list[PrevisionPoint] = []
     nb_fallback = 0
@@ -191,24 +172,25 @@ def get_prix_spots(
             points.append(PrevisionPoint(timestamp=ts, valeur=prix, est_fallback=False))
             continue
 
-        prix_j7 = _prix_a_timestamp(session, site_id, ts - timedelta(days=7))
-        if prix_j7 is not None:
+        prix_fallback = None
+        for jours in range(1, 4):
+            prix_fallback = _prix_a_timestamp(session, site_id, ts - timedelta(days=jours))
+            if prix_fallback is not None:
+                break
+
+        if prix_fallback is not None:
             nb_fallback += 1
-            points.append(PrevisionPoint(timestamp=ts, valeur=prix_j7, est_fallback=True))
+            points.append(PrevisionPoint(timestamp=ts, valeur=prix_fallback, est_fallback=True))
             continue
 
-        moyenne = _moyenne_creneau_4_semaines(session, site_id, ts)
-        if moyenne is not None:
-            nb_fallback += 1
-            points.append(PrevisionPoint(timestamp=ts, valeur=moyenne, est_fallback=True))
-            continue
-
-        nb_fallback += 1
-        points.append(PrevisionPoint(timestamp=ts, valeur=prix_defaut_eur_mwh, est_fallback=True))
+        raise PrixSpotsIndisponibles(
+            f"Prix spots indisponibles pour site={site_id} à {ts.isoformat()}"
+            " (aucun prix sur les 3 derniers jours)."
+        )
 
     if nb_fallback:
         logger.info(
-            "get_prix_spots | site=%s | %d/%d pas en fallback",
+            "get_prix_spots | site=%s | %d/%d pas en fallback (copie J-1)",
             site_id,
             nb_fallback,
             len(timestamps_attendus),

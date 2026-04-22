@@ -164,7 +164,7 @@ def charger_forecasts(cfg: AnalyseConfig, timestamps: list[datetime]) -> pd.Data
 
         conso = get_forecast_consommation(session, cfg.site_id, debut, fin, timestamps)
         pv = get_forecast_production_pv(session, cfg.site_id, debut, fin, timestamps)
-        prix = get_prix_spots(session, cfg.site_id, timestamps, cfg.prix_spot_defaut_eur_mwh)
+        prix = get_prix_spots(session, cfg.site_id, timestamps)
     except Exception as exc:
         sys.exit(
             f"Erreur de lecture des forecasts en base : {exc}\n"
