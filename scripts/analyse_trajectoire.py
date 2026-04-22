@@ -138,7 +138,7 @@ def appeler_api_optimizer(cfg: AnalyseConfig) -> dict:
     return data
 
 
-def construire_timestamps(horizon_debut: datetime, n: int = 96) -> list[datetime]:
+def construire_timestamps(horizon_debut: datetime, n: int) -> list[datetime]:
     return [horizon_debut + timedelta(minutes=15 * i) for i in range(n)]
 
 
@@ -207,8 +207,7 @@ def fusionner_trajectoire(
     cfg: AnalyseConfig,
 ) -> pd.DataFrame:
     traj = reponse["trajectoire"]
-    if len(traj) != 96:
-        sys.exit(f"La trajectoire contient {len(traj)} pas au lieu de 96 attendus.")
+    n_pas = len(traj)
 
     df_traj = pd.DataFrame(
         {
@@ -219,10 +218,10 @@ def fusionner_trajectoire(
     ).set_index("timestamp")
 
     df = df_forecasts.join(df_traj, how="inner")
-    if len(df) != 96:
+    if len(df) != n_pas:
         sys.exit(
             f"Impossible d'aligner trajectoire et forecasts : {len(df)} lignes communes "
-            f"(96 attendues). Vérifiez que les timestamps sont cohérents."
+            f"({n_pas} attendues). Vérifiez que les timestamps sont cohérents."
         )
 
     df["p_bess_kw"] = df["energie_kwh"] / PAS_H
@@ -431,6 +430,7 @@ def construire_tableau_metriques_html(
     m: MetriquesCalculees,
     reponse: dict,
     cfg: AnalyseConfig,
+    n_pas: int,
 ) -> str:
     statut = reponse.get("statut", "")
     message = reponse.get("message", "")
@@ -443,6 +443,7 @@ def construire_tableau_metriques_html(
         "degraded": "badge-degraded",
     }.get(statut, "badge-ok")
 
+    duree_h = int(n_pas * PAS_H)
     gain_color = "#27ae60" if m.gain_eur >= 0 else "#e74c3c"
 
     def eur(v: float) -> str:
@@ -466,7 +467,7 @@ def construire_tableau_metriques_html(
 
   <table class="metriques-table" style="margin-bottom:1rem;">
     <thead>
-      <tr><th>Indicateur financier (24h)</th><th>Sans BESS</th><th>Avec BESS</th><th>Delta</th></tr>
+      <tr><th>Indicateur financier ({duree_h}h)</th><th>Sans BESS</th><th>Avec BESS</th><th>Delta</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -527,9 +528,10 @@ def sauvegarder_html(
     m: MetriquesCalculees,
     reponse: dict,
     cfg: AnalyseConfig,
+    n_pas: int,
 ) -> Path:
     plot_div = fig.to_html(full_html=False, include_plotlyjs="cdn")
-    tableau_html = construire_tableau_metriques_html(m, reponse, cfg)
+    tableau_html = construire_tableau_metriques_html(m, reponse, cfg, n_pas)
 
     page = f"""<!DOCTYPE html>
 <html lang="fr">
@@ -570,11 +572,12 @@ def main() -> None:
 
     reponse = appeler_api_optimizer(cfg)
 
+    n_pas = len(reponse["trajectoire"])
     horizon_debut = datetime.fromisoformat(reponse["horizon_debut"])
     # Normaliser en tz-naïf pour construire les timestamps de requête DB
     if horizon_debut.tzinfo is not None:
         horizon_debut = horizon_debut.replace(tzinfo=None)
-    timestamps = construire_timestamps(horizon_debut)
+    timestamps = construire_timestamps(horizon_debut, n_pas)
 
     df_forecasts = charger_forecasts(cfg, timestamps)
     df = fusionner_trajectoire(df_forecasts, reponse, cfg)
@@ -588,7 +591,7 @@ def main() -> None:
     )
 
     fig = construire_figure(df, cfg)
-    output_path = sauvegarder_html(fig, metriques, reponse, cfg)
+    output_path = sauvegarder_html(fig, metriques, reponse, cfg, n_pas)
 
     if cfg.ouvrir_navigateur:
         webbrowser.open(output_path.resolve().as_uri())

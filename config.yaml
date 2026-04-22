@@ -21,7 +21,7 @@ seuil_slack_kwh: 0.1
 horizon_interne_h: 48
 
 # Horizon renvoyé au contrôleur (heures). 24h = 96 pas de 15 min.
-horizon_reponse_h: 24
+horizon_reponse_h: 48
 
 # Pas de temps en minutes.
 pas_minutes: 15
