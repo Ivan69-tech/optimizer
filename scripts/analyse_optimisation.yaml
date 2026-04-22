@@ -7,7 +7,7 @@ soe_actuel_kwh: 100.0 # État de charge initial de la batterie (kWh)
 capacite_bess_kwh: 500 # Capacité totale de la batterie (kWh)
 
 # Connexion au service d'optimisation
-optimizer_url: "http://localhost:8080"
+optimizer_url: "http://server-spotapi:8080"
 
 # Connexion à la base de données PostgreSQL (pour récupérer les prévisions)
 database_url: "postgresql://forecaster:forecaster@server-spotapi:5432/forecaster"
