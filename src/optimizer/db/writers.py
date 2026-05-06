@@ -38,6 +38,7 @@ def save_trajectoire(
     horizon_debut: datetime,
     horizon_fin: datetime,
     pas: list[PasTrajectoireNouveau],
+    date_generation_forecasts: datetime | None = None,
 ) -> Trajectoire:
     """
     Sauvegarde une trajectoire en mode glissant.
@@ -79,6 +80,7 @@ def save_trajectoire(
         derive_pct=derive_pct,
         horizon_debut=horizon_debut,
         horizon_fin=horizon_fin,
+        date_generation_forecasts=date_generation_forecasts,
     )
     session.add(trajectoire)
     session.flush()

@@ -102,7 +102,9 @@ class Trajectoire(Base):
     derive_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     horizon_debut: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     horizon_fin: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
+    date_generation_forecasts: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class TrajectoirePas(Base):

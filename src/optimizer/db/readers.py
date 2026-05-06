@@ -11,6 +11,7 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 # La DB peut stocker les timestamps en tz-naïf (SQLite) ou tz-aware (PostgreSQL).
@@ -216,3 +217,49 @@ def get_pas_trajectoire(session: Session, site_id: str) -> list[TrajectoirePas]:
         .order_by(TrajectoirePas.timestamp)
         .all()
     )
+
+
+def get_pas_trajectoire_depuis(
+    session: Session,
+    site_id: str,
+    depuis: datetime,
+    nb_max: int,
+) -> list[TrajectoirePas]:
+    """Pas de trajectoire pour site_id, timestamp >= depuis, limités à nb_max."""
+    return (
+        session.query(TrajectoirePas)
+        .filter(TrajectoirePas.site_id == site_id)
+        .filter(TrajectoirePas.timestamp >= depuis)
+        .order_by(TrajectoirePas.timestamp)
+        .limit(nb_max)
+        .all()
+    )
+
+
+def get_max_date_generation_forecasts(
+    session: Session,
+    site_id: str,
+    debut: datetime,
+    fin: datetime,
+) -> datetime | None:
+    """MAX(date_generation) sur les 3 tables de forecasts pour la fenêtre [debut, fin)."""
+    max_conso = session.query(func.max(ConsumptionForecast.date_generation)).filter(
+        ConsumptionForecast.site_id == site_id,
+        ConsumptionForecast.timestamp >= debut,
+        ConsumptionForecast.timestamp < fin,
+    ).scalar()
+
+    max_pv = session.query(func.max(PVProductionForecast.date_generation)).filter(
+        PVProductionForecast.site_id == site_id,
+        PVProductionForecast.timestamp >= debut,
+        PVProductionForecast.timestamp < fin,
+    ).scalar()
+
+    max_prix = session.query(func.max(SpotPriceForecast.date_generation)).filter(
+        SpotPriceForecast.site_id == site_id,
+        SpotPriceForecast.timestamp >= debut,
+        SpotPriceForecast.timestamp < fin,
+    ).scalar()
+
+    candidates = [d for d in (max_conso, max_pv, max_prix) if d is not None]
+    return max(candidates) if candidates else None

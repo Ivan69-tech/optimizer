@@ -32,8 +32,9 @@ POST /api/v1/optimize
 api/routes.py          ←── validation Pydantic
        │
        ▼
-pipeline/optimize.py   ←── orchestration : lit DB → dérive → solveur → écrit
+pipeline/optimize.py   ←── orchestration : cache check → dérive → solveur → écrit
        │
+       ├── pipeline/drift.py   ←── dérive SoC par interpolation linéaire
        ├── db/readers.py       ←── forecasts, params site, prix spot (+ fallback J-1)
        ├── optimizer/solver.py ←── formulation LP (CVXPY + HiGHS) + résolution
        └── db/writers.py       ←── écriture dans trajectoires_optimisees
@@ -230,10 +231,10 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
 {
   "site_id": "site-01",
   "timestamp_calcul": "2026-04-19T10:00:03+02:00",
-  "horizon_debut": "2026-04-19T10:00:00+02:00",
+  "horizon_debut": "2026-04-19T10:15:00+02:00",
   "trajectoire": [
-    { "timestamp": "2026-04-19T10:00:00+02:00", "energie_kwh": 12.5,  "soe_cible_kwh": 137.5 },
-    { "timestamp": "2026-04-19T10:15:00+02:00", "energie_kwh": -10.0, "soe_cible_kwh": 147.0 }
+    { "timestamp": "2026-04-19T10:15:00+02:00", "energie_kwh": 12.5,  "soe_cible_kwh": 137.5 },
+    { "timestamp": "2026-04-19T10:30:00+02:00", "energie_kwh": -10.0, "soe_cible_kwh": 147.0 }
   ],
   "statut": "ok",
   "message": ""
@@ -241,6 +242,11 @@ curl -X POST http://127.0.0.1:8080/api/v1/optimize \
 ```
 
 `energie_kwh` en **convention producteur** : positif = décharge BESS, négatif = charge.
+
+`horizon_debut` est toujours le **prochain créneau complet de 15 min** (supérieur strict à
+l'heure d'appel). Si l'appel arrive à 10:07, `horizon_debut` vaut 10:15 ; si l'appel arrive
+à 10:15:00 pile, `horizon_debut` vaut 10:30. Cela garantit que chaque pas retourné est
+physiquement atteignable par le contrôleur.
 
 | Statut       | Signification                                                |
 | ------------ | ------------------------------------------------------------ |
@@ -269,6 +275,28 @@ Dernière trajectoire calculée pour ce site.
 ### `GET /api/v1/sites/{site_id}/status`
 
 Dérive SoC courante et date du dernier calcul.
+
+---
+
+## Cache de trajectoire
+
+Avant de lancer le solveur, le pipeline vérifie si la dernière trajectoire en base est
+encore exploitable. Le recalcul est déclenché dès que **l'un** des quatre cas suivants est vrai :
+
+| Priorité | Déclencheur                         | Détail                                                              |
+| -------- | ----------------------------------- | ------------------------------------------------------------------- |
+| 1        | Cache vide                          | Aucune trajectoire précédente pour ce site                          |
+| 2        | Dérive SoC > seuil                  | \|SoE mesuré − SoE interpolé\| / capacité > `seuil_derive_pct`     |
+| 3        | Nouveaux forecasts disponibles      | `MAX(date_generation)` en base > valeur enregistrée au dernier calcul |
+| 4        | Trajectoire trop ancienne           | `now − timestamp_calcul > 4 h`                                     |
+
+Si aucun déclencheur n'est actif, le service retourne directement les pas en cache sans
+appeler le solveur (les pas dont `timestamp >= horizon_debut` sont sélectionnés).
+
+Le déclencheur 2 utilise une **interpolation linéaire** entre les deux pas encadrant
+l'instant de l'appel, plutôt qu'une simple comparaison au dernier pas connu.
+Le déclencheur 3 couvre à la fois les mises à jour intraday de prévisions et la
+publication des prix J+1 par RTE vers 16 h.
 
 ---
 
@@ -305,12 +333,15 @@ uv run ruff check src/ tests/
 uv run ruff format src/ tests/
 ```
 
-Les tests du solveur vérifient notamment :
+Les tests vérifient notamment :
 
 - Le respect des bornes SoC sur tous les pas
 - La cohérence de la convention producteur (`P_pdl = P_pv + P_bess - P_conso`)
 - Qu'un site avec `p_max_injection_kw = 0` ne produit jamais `P_pdl > 0`
-- Qu'une dérive > 10 % produit bien le statut `"corrective"`
+- Que l'interpolation de dérive renvoie 0 % quand le SoE suit exactement la trajectoire
+- Que `horizon_debut` est toujours un multiple de 15 min et strictement dans le futur
+- Que chacun des quatre déclencheurs de cache active bien le recalcul indépendamment
+- Que `needs_recompute` retourne `False` quand aucun déclencheur n'est actif
 
 ---
 

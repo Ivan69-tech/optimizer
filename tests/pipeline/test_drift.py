@@ -89,3 +89,53 @@ def test_derive_calculee_correctement(db_session, sample_site):
     )
     assert derive is not None
     assert abs(derive - 10.0) < 1e-6
+
+
+def test_derive_nulle_avec_interpolation_parfaite(db_session, sample_site):
+    """SoE réel = valeur interpolée exacte → dérive ≈ 0."""
+    # t_avant=10:15 soe=100, t_apres=10:30 soe=130
+    # t_now=10:22 → alpha=7/15 → soe_attendu = 100 + (7/15)*30 = 114
+    t_avant = datetime(2026, 4, 18, 10, 15, tzinfo=UTC)
+    t_apres = datetime(2026, 4, 18, 10, 30, tzinfo=UTC)
+    traj = _insert_traj(
+        db_session,
+        sample_site,
+        horizon_debut=t_avant,
+        pas_data=[(t_avant, 100.0), (t_apres, 130.0)],
+    )
+
+    t_now = datetime(2026, 4, 18, 10, 22, tzinfo=UTC)
+    derive = calcul_derive_pct(
+        db_session,
+        trajectoire_precedente=traj,
+        soe_actuel_kwh=114.0,
+        timestamp_requete=t_now,
+        capacite_bess_kwh=sample_site.capacite_bess_kwh,
+    )
+    assert derive is not None
+    assert abs(derive) < 1e-9
+
+
+def test_derive_interpolee_detectee(db_session, sample_site):
+    """SoE réel loin de la valeur interpolée → dérive détectée correctement."""
+    # soe_attendu à 10:22 = 114, actual = 80
+    # dérive = |80 - 114| / 200 * 100 = 17 %
+    t_avant = datetime(2026, 4, 18, 10, 15, tzinfo=UTC)
+    t_apres = datetime(2026, 4, 18, 10, 30, tzinfo=UTC)
+    traj = _insert_traj(
+        db_session,
+        sample_site,
+        horizon_debut=t_avant,
+        pas_data=[(t_avant, 100.0), (t_apres, 130.0)],
+    )
+
+    t_now = datetime(2026, 4, 18, 10, 22, tzinfo=UTC)
+    derive = calcul_derive_pct(
+        db_session,
+        trajectoire_precedente=traj,
+        soe_actuel_kwh=80.0,
+        timestamp_requete=t_now,
+        capacite_bess_kwh=sample_site.capacite_bess_kwh,
+    )
+    assert derive is not None
+    assert abs(derive - 17.0) < 1e-6

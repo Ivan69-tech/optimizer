@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from optimizer.config import ConfigYaml
 from optimizer.db import readers, writers
-from optimizer.db.models import Site
+from optimizer.db.models import Site, Trajectoire
 from optimizer.exceptions import ForecastsMissingError, SiteNotFoundError
 from optimizer.optimizer import solver
 from optimizer.optimizer.types import PasSolveur, SiteParams, SolverInput, SolverOutput
@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 STATUT_OK = "ok"
 STATUT_CORRECTIVE = "corrective"
 STATUT_DEGRADED = "degraded"
+
+_MAX_AGE_CACHE = timedelta(hours=4)
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,16 @@ def _floor_pas(ts: datetime, pas_minutes: int) -> datetime:
     """Arrondit `ts` au multiple inférieur de pas_minutes (ex. 10:07 → 10:00)."""
     minute = (ts.minute // pas_minutes) * pas_minutes
     return ts.replace(minute=minute, second=0, microsecond=0)
+
+
+def prochain_quart_heure(now: datetime) -> datetime:
+    """Retourne le début du prochain créneau de 15 min complet (strictement > now)."""
+    return _floor_pas(now, 15) + timedelta(minutes=15)
+
+
+def _strip_tz(ts: datetime) -> datetime:
+    """Retire tzinfo pour une comparaison homogène SQLite/PostgreSQL."""
+    return ts.replace(tzinfo=None) if ts.tzinfo is not None else ts
 
 
 def _to_site_params(site: Site) -> SiteParams:
@@ -82,6 +94,68 @@ def _choisir_statut(
     return STATUT_OK, ""
 
 
+def needs_recompute(
+    session: Session,
+    site_id: str,
+    soe_actuel_kwh: float,
+    capacite_bess_kwh: float,
+    derniere_trajectoire: Trajectoire | None,
+    now: datetime,
+    cfg: ConfigYaml,
+) -> tuple[bool, float | None]:
+    """
+    Retourne (doit_recalculer, derive_pct).
+
+    Teste dans l'ordre quatre déclencheurs :
+    1. Cache vide (aucune trajectoire précédente).
+    2. Dérive interpolée > seuil.
+    3. Forecasts plus récents que lors du dernier calcul.
+    4. Trajectoire trop ancienne (> 4 h).
+    """
+    # 1. Cache vide
+    if derniere_trajectoire is None:
+        return True, None
+
+    # 2. Dérive interpolée
+    derive_pct = calcul_derive_pct(
+        session, derniere_trajectoire, soe_actuel_kwh, now, capacite_bess_kwh
+    )
+    if derive_pct is not None and derive_pct > cfg.seuil_derive_pct:
+        logger.info(
+            "needs_recompute | site=%s | dérive=%.1f%% > seuil → recalcul", site_id, derive_pct
+        )
+        return True, derive_pct
+
+    # 3. Nouveaux forecasts disponibles
+    horizon_debut = prochain_quart_heure(now)
+    horizon_fin = horizon_debut + timedelta(hours=cfg.horizon_interne_h)
+    max_date_gen = readers.get_max_date_generation_forecasts(
+        session, site_id, horizon_debut, horizon_fin
+    )
+    stored_date_gen = derniere_trajectoire.date_generation_forecasts
+    if max_date_gen is not None and (
+        stored_date_gen is None or _strip_tz(max_date_gen) > _strip_tz(stored_date_gen)
+    ):
+        logger.info(
+            "needs_recompute | site=%s | nouveaux forecasts (%s > %s) → recalcul",
+            site_id,
+            max_date_gen,
+            stored_date_gen,
+        )
+        return True, derive_pct
+
+    # 4. Trajectoire trop ancienne
+    age = _strip_tz(now) - _strip_tz(derniere_trajectoire.timestamp_calcul)
+    if age > _MAX_AGE_CACHE:
+        logger.info(
+            "needs_recompute | site=%s | âge=%s > %s → recalcul", site_id, age, _MAX_AGE_CACHE
+        )
+        return True, derive_pct
+
+    logger.info("needs_recompute | site=%s | cache valide (âge=%s)", site_id, age)
+    return False, derive_pct
+
+
 def run_optimization(
     session: Session,
     site_id: str,
@@ -93,12 +167,9 @@ def run_optimization(
 
     Étapes :
     1. Lire `Site` (lève `SiteNotFoundError` si inconnu → 404).
-    2. Construire la fenêtre horizon_interne (N pas).
-    3. Lire forecasts conso + PV ; lever `ForecastsMissingError` si > 50 % manquants.
-    4. Lire les prix spots (fallback J-1 ; lève `PrixSpotsIndisponibles` si absents).
-    5. Calculer la dérive vs la trajectoire précédente.
-    6. Résoudre le LP.
-    7. Déterminer le statut, écrire en DB, retourner les 96 premiers pas.
+    2. Vérifier si un recalcul est nécessaire (cache + dérive + forecasts + âge).
+    3. Si cache valide → retourner la trajectoire en cache.
+    4. Sinon → lire forecasts, résoudre le LP, écrire et retourner les 96 premiers pas.
     """
     t0 = time.perf_counter()
     now = datetime.now(tz=UTC)
@@ -108,7 +179,42 @@ def run_optimization(
     if site is None:
         raise SiteNotFoundError(f"site_id inconnu : {site_id}")
 
-    horizon_debut = _floor_pas(now, cfg.pas_minutes)
+    capacite_bess = float(site.capacite_bess_kwh)
+    derniere = readers.get_derniere_trajectoire(session, site_id)
+    horizon_debut = prochain_quart_heure(now)
+
+    doit_recalculer, derive_pct = needs_recompute(
+        session, site_id, soe_actuel_kwh, capacite_bess, derniere, now, cfg
+    )
+
+    if not doit_recalculer:
+        pas_cache = readers.get_pas_trajectoire_depuis(
+            session, site_id, horizon_debut, cfg.nb_pas_reponse
+        )
+        logger.info(
+            "run_optimization CACHE | site=%s | statut=%s | %.0fms",
+            site_id,
+            derniere.statut,  # type: ignore[union-attr]
+            (time.perf_counter() - t0) * 1000,
+        )
+        return ResultatOptimisation(
+            site_id=site_id,
+            timestamp_calcul=derniere.timestamp_calcul,  # type: ignore[union-attr]
+            horizon_debut=horizon_debut,
+            horizon_fin=horizon_debut + timedelta(hours=cfg.horizon_reponse_h),
+            statut=derniere.statut,  # type: ignore[union-attr]
+            message=derniere.message or "",  # type: ignore[union-attr]
+            derive_pct=derive_pct,
+            pas_reponse=[
+                PasSolveur(
+                    timestamp=p.timestamp,
+                    energie_kwh=p.energie_kwh,
+                    soe_cible_kwh=p.soe_cible_kwh,
+                )
+                for p in pas_cache
+            ],
+        )
+
     horizon_fin = horizon_debut + timedelta(hours=cfg.horizon_interne_h)
     pas_delta = timedelta(minutes=cfg.pas_minutes)
     timestamps = [horizon_debut + i * pas_delta for i in range(cfg.nb_pas_interne)]
@@ -142,14 +248,9 @@ def run_optimization(
         len(prix),
     )
 
-    capacite_bess = float(site.capacite_bess_kwh)
-    derniere = readers.get_derniere_trajectoire(session, site_id)
-    derive_pct = calcul_derive_pct(session, derniere, soe_actuel_kwh, now, capacite_bess)
-
-    capacite = float(site.capacite_bess_kwh)
-    if not (-1e-6 <= soe_actuel_kwh <= capacite + 1e-6):
+    if not (-1e-6 <= soe_actuel_kwh <= capacite_bess + 1e-6):
         raise ValueError(
-            f"soe_actuel={soe_actuel_kwh:.1f} kWh hors bornes [0, {capacite:.1f}] kWh."
+            f"soe_actuel={soe_actuel_kwh:.1f} kWh hors bornes [0, {capacite_bess:.1f}] kWh."
         )
 
     entree = SolverInput(
@@ -166,6 +267,9 @@ def run_optimization(
     statut, message = _choisir_statut(sortie, derive_pct, cfg)
 
     timestamp_calcul = datetime.now(tz=UTC)
+    max_date_gen = readers.get_max_date_generation_forecasts(
+        session, site_id, horizon_debut, horizon_fin
+    )
     writers.save_trajectoire(
         session,
         site_id=site_id,
@@ -184,6 +288,7 @@ def run_optimization(
             )
             for p in sortie.pas
         ],
+        date_generation_forecasts=max_date_gen,
     )
 
     logger.info(
